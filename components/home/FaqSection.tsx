@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useLanguage } from '@/lib/language';
 import PageShell from '@/components/layout/PageShell';
 import TwoToneHeading from '@/components/ui/TwoToneHeading';
 import TiltSurface from '@/components/ui/TiltSurface';
+import { initialAdminFaqs, loadAdminFaqs } from '@/lib/adminFaqs';
 
 const container = {
   hidden: {},
@@ -17,17 +18,14 @@ const item = {
 };
 
 export default function FaqSection() {
-  const { t } = useLanguage();
+  const { t, pick } = useLanguage();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [adminFaqs, setAdminFaqs] = useState(initialAdminFaqs);
   const reduceMotion = useReducedMotion();
 
-  const faqs = [
-    { q: t.faqQ1, a: t.faqA1 },
-    { q: t.faqQ2, a: t.faqA2 },
-    { q: t.faqQ3, a: t.faqA3 },
-    { q: t.faqQ4, a: t.faqA4 },
-    { q: t.faqQ5, a: t.faqA5 },
-  ];
+  useEffect(() => setAdminFaqs(loadAdminFaqs()), []);
+
+  const faqs = adminFaqs.filter((faq) => faq.published).map((faq) => ({ id: faq.id, q: pick(faq.question), a: pick(faq.answer) }));
 
   return (
     <section className="py-14 sm:py-16">
@@ -59,7 +57,7 @@ export default function FaqSection() {
                 const isOpen = openIndex === i;
                 return (
                   <motion.div
-                    key={faq.q}
+                    key={faq.id}
                     variants={item}
                     className={`group relative z-[1] transition-colors duration-300 first:rounded-t-[1.75rem] last:rounded-b-[1.75rem] ${isOpen ? 'bg-white/70' : 'bg-white/[0.15] hover:bg-white/40'}`}
                   >
