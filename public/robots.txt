@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /account/
+Disallow: /compare
+Disallow: /redirect/
+Disallow: /for-hotels/get-started
+
+Sitemap: https://www.ethiopidia.com/sitemap.xml

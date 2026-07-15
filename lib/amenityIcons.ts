@@ -1,0 +1,53 @@
+import {
+  Wifi,
+  ParkingCircle,
+  Waves,
+  UtensilsCrossed,
+  Dumbbell,
+  Sparkles,
+  Snowflake,
+  Wine,
+  Coffee,
+  PawPrint,
+  Bus,
+  WashingMachine,
+  Briefcase,
+  BellRing,
+  Mountain,
+  Trees,
+  Presentation,
+  Users,
+  CigaretteOff,
+  BedDouble,
+  Cigarette,
+  Check,
+  type LucideIcon,
+} from 'lucide-react';
+
+const registry: Record<string, LucideIcon> = {
+  Wifi,
+  ParkingCircle,
+  Waves,
+  UtensilsCrossed,
+  Dumbbell,
+  Sparkles,
+  Snowflake,
+  Wine,
+  Coffee,
+  PawPrint,
+  Bus,
+  WashingMachine,
+  Briefcase,
+  BellRing,
+  Mountain,
+  Trees,
+  Presentation,
+  Users,
+  CigaretteOff,
+  BedDouble,
+  Cigarette,
+};
+
+export function getAmenityIcon(iconName: string): LucideIcon {
+  return registry[iconName] ?? Check;
+}
