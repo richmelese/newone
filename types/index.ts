@@ -65,6 +65,28 @@ export interface Hotel {
   coords: Coords;
 }
 
+export type PropertyRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PropertyRequest {
+  id: string;
+  submittedAt: string;
+  status: PropertyRequestStatus;
+  contactName: string;
+  role: string;
+  email: string;
+  phone: string;
+  propertyName: string;
+  propertyType: string;
+  starClass: string;
+  rooms: string;
+  city: string;
+  address: string;
+  services: string[];
+  amenities: string[];
+  notes: string;
+  mediaCount: number;
+}
+
 export interface Destination {
   id: string;
   slug: string;

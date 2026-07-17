@@ -14,13 +14,16 @@ function GreatForCard({ experience }: { experience: Experience }) {
   const [saved, setSaved] = useState(false);
 
   return (
-    <Link href={`/experiences/${experience.id}`} className="group block w-40 shrink-0 snap-start sm:w-52">
+    <Link
+      href={`/experiences/${experience.id}`}
+      className="group block w-56 shrink-0 snap-start sm:w-64 lg:w-[calc(25%-12px)]"
+    >
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card-lg shadow-card">
         <Image
           src={experience.photo}
           alt={pick(experience.name)}
           fill
-          sizes="(max-width: 640px) 40vw, 208px"
+          sizes="(max-width: 640px) 60vw, (max-width: 1024px) 256px, 25vw"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <button
@@ -31,12 +34,12 @@ function GreatForCard({ experience }: { experience: Experience }) {
             setSaved((v) => !v);
           }}
           aria-label={saved ? 'Remove from favorites' : 'Save to favorites'}
-          className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink-500 shadow-soft transition-colors hover:text-accent-500"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink-500 shadow-soft transition-colors hover:text-accent-500"
         >
-          <Heart size={15} className={clsx(saved && 'fill-accent-500 text-accent-500')} />
+          <Heart size={17} className={clsx(saved && 'fill-accent-500 text-accent-500')} />
         </button>
       </div>
-      <h3 className="mt-2.5 line-clamp-1 font-heading text-base font-bold text-ink-900 group-hover:text-primary-700">
+      <h3 className="mt-3 line-clamp-1 font-heading text-lg font-bold text-ink-900 group-hover:text-primary-700">
         {pick(experience.name)}
       </h3>
       <p className="mt-0.5 text-sm text-ink-500">{experience.category}</p>

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import clsx from 'clsx';
@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Hotel,
   HelpCircle,
+  Inbox,
   Landmark,
   LayoutDashboard,
   Map,
@@ -18,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import Seo from '@/components/layout/Seo';
+import { loadPropertyRequests } from '@/lib/propertyRequests';
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -31,6 +33,7 @@ const navigation = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/destinations', label: 'Destinations', icon: Map },
   { href: '/admin/hotels', label: 'Hotels', icon: Hotel },
+  { href: '/admin/requests', label: 'Property requests', icon: Inbox },
   { href: '/admin/experiences', label: 'Things to do', icon: Compass },
   { href: '/admin/reviews', label: 'Reviews', icon: MessageSquare },
   { href: '/admin/faqs', label: 'FAQ', icon: HelpCircle },
@@ -39,6 +42,11 @@ const navigation = [
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  useEffect(() => {
+    setPendingRequests(loadPropertyRequests().filter((request) => request.status === 'pending').length);
+  }, []);
 
   return (
     <div className="flex h-full flex-col bg-primary-900 text-white">
@@ -69,7 +77,12 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <Icon size={18} className={active ? 'text-accent-500' : 'text-primary-300'} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === '/admin/requests' && pendingRequests > 0 && (
+                <span className={clsx('rounded-pill px-2 py-0.5 text-[10px] font-bold', active ? 'bg-accent-500 text-white' : 'bg-accent-500/20 text-accent-200')}>
+                  {pendingRequests}
+                </span>
+              )}
             </Link>
           );
         })}

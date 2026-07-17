@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/lib/language';
+import { submitPropertyRequest } from '@/lib/propertyRequests';
 import Layout from '@/components/layout/Layout';
 import PageShell from '@/components/layout/PageShell';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
@@ -87,6 +88,24 @@ export default function GetStartedPage() {
     const formData = new FormData(form);
     const submittedProperty = formData.get('propertyName')?.toString().trim();
     setPropertyName(submittedProperty || 'your property');
+
+    submitPropertyRequest({
+      contactName: String(formData.get('name') ?? '').trim(),
+      role: String(formData.get('role') ?? ''),
+      email: String(formData.get('email') ?? '').trim(),
+      phone: String(formData.get('phone') ?? '').trim(),
+      propertyName: submittedProperty || 'Untitled property',
+      propertyType: String(formData.get('type') ?? ''),
+      starClass: String(formData.get('stars') ?? ''),
+      rooms: String(formData.get('rooms') ?? ''),
+      city: String(formData.get('city') ?? ''),
+      address: String(formData.get('address') ?? '').trim(),
+      services: formData.getAll('services').map(String),
+      amenities: formData.getAll('amenities').map(String),
+      notes: String(formData.get('notes') ?? '').trim(),
+      mediaCount: formData.getAll('media').filter((entry) => entry instanceof File && entry.size > 0).length,
+    });
+
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -186,9 +205,9 @@ export default function GetStartedPage() {
                     </div>
                     <div>
                       <label htmlFor="email" className={labelClasses}>
-                        Email {requiredMark}
+                        Email 
                       </label>
-                      <input id="email" name="email" type="email" required placeholder="you@example.com" className={inputClasses} />
+                      <input id="email" name="email" type="email" defaultValue="you@example.com" className={inputClasses} />
                     </div>
                     <div>
                       <label htmlFor="phone" className={labelClasses}>
@@ -249,7 +268,7 @@ export default function GetStartedPage() {
                       </label>
                       <input id="rooms" name="rooms" type="number" min="1" placeholder="e.g. 24" className={inputClasses} />
                     </div>
-                    <div className="sm:col-span-2">
+                    {/* <div className="sm:col-span-2">
                       <label htmlFor="description" className={labelClasses}>
                         Short description
                       </label>
@@ -260,7 +279,7 @@ export default function GetStartedPage() {
                         placeholder="A sentence or two about your property, its style, and what makes it special."
                         className={inputClasses}
                       />
-                    </div>
+                    </div> */}
                   </div>
                 </section>
 
