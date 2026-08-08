@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Menu, X, Landmark } from 'lucide-react';
+import { ChevronDown, Menu, X, Landmark } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import clsx from 'clsx';
 import { useLanguage } from '@/lib/language';
+import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/authModal';
 import LanguageToggle from '@/components/ui/LanguageToggle';
 import Button from '@/components/ui/Button';
 
@@ -14,10 +16,32 @@ type NavbarProps = {
 
 export default function Navbar(_props: NavbarProps) {
   const { t } = useLanguage();
+  const { user, hydrated, signOut } = useAuth();
+  const { openSignIn } = useAuthModal();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const solid = true;
+
+  const profileInitials = useMemo(
+    () => user?.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'ET',
+    [user?.name],
+  );
+
+  useEffect(() => {
+    function closeProfileMenu(event: MouseEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileMenuOpen(false);
+    }
+    document.addEventListener('mousedown', closeProfileMenu);
+    return () => document.removeEventListener('mousedown', closeProfileMenu);
+  }, []);
+
+  const profileLinks = [
+    { href: '/account/profile', label: 'Profile' },
+    { href: '/admin/hotels', label: 'My properties' },
+  ];
 
   const navLinks = [
     { href: '/search', label: t.navHotels },
@@ -105,6 +129,51 @@ export default function Navbar(_props: NavbarProps) {
                   : 'border-white/30 text-white hover:border-white/50 hover:text-white'
               }
             />
+            {hydrated && (user ? (
+              <div ref={profileMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen((open) => !open)}
+                  aria-label="Open profile menu"
+                  aria-expanded={profileMenuOpen}
+                  className="flex items-center gap-2 rounded-pill py-1 pl-1 pr-2 text-sm font-semibold text-ink-800 transition hover:bg-neutral-100"
+                >
+                  <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-primary-500 to-primary-800 text-xs font-extrabold text-white shadow-soft ring-2 ring-white">
+                    {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : profileInitials}
+                  </span>
+                  <span className="max-w-24 truncate">{user.name}</span>
+                  <ChevronDown size={15} className={clsx('text-ink-400 transition-transform', profileMenuOpen && 'rotate-180')} />
+                </button>
+
+                <AnimatePresence>
+                  {profileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.16, ease: 'easeOut' }}
+                      className="absolute right-0 top-[calc(100%+14px)] z-50 w-48 origin-top-right rounded-xl bg-white p-2 shadow-[0_18px_45px_rgba(11,36,54,0.18)] ring-1 ring-black/5"
+                    >
+                      <span className="absolute -top-2 right-7 h-4 w-4 rotate-45 rounded-sm bg-white" aria-hidden="true" />
+                      <nav aria-label="Profile menu" className="relative">
+                        {profileLinks.map((item) => (
+                          <Link key={item.label} href={item.href} onClick={() => setProfileMenuOpen(false)} className="block rounded-lg px-4 py-2.5 text-sm font-medium text-[#173f2a] transition hover:bg-[#8df19a]/35">
+                            {item.label}
+                          </Link>
+                        ))}
+                        <button type="button" onClick={() => { setProfileMenuOpen(false); signOut(); }} className="block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium text-[#173f2a] transition hover:bg-[#8df19a]/35">
+                          Sign out
+                        </button>
+                      </nav>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Button type="button" onClick={() => openSignIn('/account/profile')} size="sm" variant="outline">
+                {t.signInButton}
+              </Button>
+            ))}
             <Button href="/for-hotels/get-started" size="sm" variant={solid ? 'dark' : 'secondary'}>
               {t.navListYourHotel}
             </Button>
@@ -159,10 +228,30 @@ export default function Navbar(_props: NavbarProps) {
               </nav>
               <div className="mt-3 flex items-center gap-3">
                 <LanguageToggle />
-                <Button href="/for-hotels/get-started" size="sm" fullWidth variant="dark">
-                  {t.navListYourHotel}
-                </Button>
+                {hydrated && (user ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-neutral-100 px-3 py-2">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-primary-500 to-primary-800 text-xs font-extrabold text-white">
+                      {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : profileInitials}
+                    </span>
+                    <span className="truncate text-sm font-semibold text-ink-800">{user.name}</span>
+                  </div>
+                ) : (
+                  <Button type="button" size="sm" fullWidth variant="outline" onClick={() => { setMobileOpen(false); openSignIn('/account/profile'); }}>
+                    {t.signInButton}
+                  </Button>
+                ))}
               </div>
+              {hydrated && user && (
+                <nav aria-label="Mobile profile menu" className="mt-3 border-t border-neutral-200 pt-2">
+                  {profileLinks.map((item) => (
+                    <Link key={item.label} href={item.href} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[#173f2a] transition hover:bg-[#8df19a]/35">{item.label}</Link>
+                  ))}
+                  <button type="button" onClick={() => { setMobileOpen(false); signOut(); }} className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[#173f2a] transition hover:bg-[#8df19a]/35">Sign out</button>
+                </nav>
+              )}
+              <Button href="/for-hotels/get-started" size="sm" fullWidth variant="dark" className="mt-3" onClick={() => setMobileOpen(false)}>
+                {t.navListYourHotel}
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>

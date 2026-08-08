@@ -7,8 +7,10 @@ export default function AccountTabs() {
   const router = useRouter();
 
   const tabs = [
+    { href: '/account/profile', label: 'Profile' },
     { href: '/account/favorites', label: t.favoritesTitle },
     { href: '/account/history', label: t.historyTitle },
+    { href: '/account/reviews', label: t.myReviewsTitle },
   ];
 
   return (

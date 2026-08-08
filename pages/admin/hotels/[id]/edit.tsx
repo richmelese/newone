@@ -56,6 +56,7 @@ export default function EditHotelPage() {
           </div>
           <div className="flex justify-end gap-2 border-t border-neutral-200 p-5"><Link href="/admin/hotels" className="rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-bold text-ink-500">Cancel</Link><button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-primary-800 px-5 py-2.5 text-sm font-bold text-white"><Save size={16} /> Save changes</button></div>
         </Panel>
+
         <Panel className="h-fit"><PanelHeader title="Listing preview" description="Current primary image and rating" /><div className="p-5"><div className="relative aspect-[4/3] overflow-hidden rounded-xl"><Image src={hotel.photos[0]} alt={hotel.name} fill sizes="420px" className="object-cover" /></div><h2 className="mt-4 font-heading text-lg font-extrabold">{hotel.name}</h2><div className="mt-2 flex items-center justify-between"><span className="flex items-center gap-1 text-sm font-bold"><Star size={14} className="fill-amber-500 text-amber-500" /> {hotel.guestRating}</span><StatusPill tone={hotel.bookingActive ? 'green' : 'amber'}>{hotel.bookingActive ? 'Published' : 'Draft'}</StatusPill></div></div></Panel>
       </form>
     </AdminLayout>

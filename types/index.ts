@@ -208,6 +208,7 @@ export interface Partner {
 export interface User {
   name: string;
   email: string;
+  avatarUrl?: string;
 }
 
 export interface FavoriteEntry {
@@ -218,6 +219,43 @@ export interface FavoriteEntry {
 export interface ViewedEntry {
   hotelId: string;
   viewedAt: string;
+}
+
+export type ServiceType = 'hotel' | 'restaurant' | 'thing_to_do' | 'tour' | 'wellness' | 'nightlife';
+
+export type TripType = 'solo' | 'couple' | 'family' | 'friends' | 'business';
+
+export type ReviewStatus = 'pending' | 'published' | 'rejected';
+
+export interface ReviewEntityRef {
+  id: string;
+  type: ServiceType;
+  name: Localized;
+  photo?: string;
+}
+
+export interface ReviewAuthor {
+  name: string;
+  email: string;
+}
+
+export interface EntityReview {
+  id: string;
+  entityId: string;
+  entityType: ServiceType;
+  entityName: Localized;
+  author: ReviewAuthor;
+  rating: number;
+  subRatings: Record<string, number>;
+  title: Localized;
+  text: Localized;
+  tripType: TripType;
+  visitDate: string;
+  photos: string[];
+  verified: boolean;
+  status: ReviewStatus;
+  helpfulCount: number;
+  createdAt: string;
 }
 
 export type SortOption = 'recommended' | 'price-asc' | 'price-desc' | 'rating';

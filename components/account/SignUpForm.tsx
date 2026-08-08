@@ -4,10 +4,15 @@ import Link from 'next/link';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
 import Button from '@/components/ui/Button';
+import GoogleSignInButton from '@/components/account/GoogleSignInButton';
+
+function safeNext(value: string | string[] | undefined): string {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/account/profile';
+}
 
 export default function SignUpForm() {
   const { t } = useLanguage();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -16,8 +21,15 @@ export default function SignUpForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     signIn({ name, email });
-    router.push('/account/favorites');
+    router.push(safeNext(router.query.next));
   };
+
+  const handleGoogleSignIn = () => {
+    signInWithGoogle();
+    router.push(safeNext(router.query.next));
+  };
+
+  const signInHref = `/account/sign-in?next=${encodeURIComponent(safeNext(router.query.next))}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,9 +75,13 @@ export default function SignUpForm() {
       <Button type="submit" fullWidth size="lg">
         {t.signUpButton}
       </Button>
+      <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-wider text-ink-400">
+        <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
+      </div>
+      <GoogleSignInButton onClick={handleGoogleSignIn} label="Sign up with Google" />
       <p className="text-center text-sm text-ink-500">
         {t.haveAccountAlready}{' '}
-        <Link href="/account/sign-in" className="font-semibold text-primary-700 hover:underline">
+        <Link href={signInHref} className="font-semibold text-primary-700 hover:underline">
           {t.signInButton}
         </Link>
       </p>

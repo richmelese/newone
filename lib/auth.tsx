@@ -6,6 +6,7 @@ type AuthContextType = {
   user: User | null;
   hydrated: boolean;
   signIn: (user: User) => void;
+  signInWithGoogle: () => void;
   signOut: () => void;
 };
 
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       hydrated,
       signIn: (next: User) => setUser(next),
+      signInWithGoogle: () => setUser({ name: 'Google Traveler', email: 'traveler@gmail.com' }),
       signOut: () => setUser(null),
     }),
     [user, hydrated, setUser],

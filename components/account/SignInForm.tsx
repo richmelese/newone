@@ -4,10 +4,15 @@ import Link from 'next/link';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
 import Button from '@/components/ui/Button';
+import GoogleSignInButton from '@/components/account/GoogleSignInButton';
+
+function safeNext(value: string | string[] | undefined): string {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/account/profile';
+}
 
 export default function SignInForm() {
   const { t } = useLanguage();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,8 +20,15 @@ export default function SignInForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     signIn({ name: email.split('@')[0] || 'Traveler', email });
-    router.push('/account/favorites');
+    router.push(safeNext(router.query.next));
   };
+
+  const handleGoogleSignIn = () => {
+    signInWithGoogle();
+    router.push(safeNext(router.query.next));
+  };
+
+  const signUpHref = `/account/sign-up?next=${encodeURIComponent(safeNext(router.query.next))}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,9 +61,13 @@ export default function SignInForm() {
       <Button type="submit" fullWidth size="lg">
         {t.signInButton}
       </Button>
+      <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-wider text-ink-400">
+        <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
+      </div>
+      <GoogleSignInButton onClick={handleGoogleSignIn} />
       <p className="text-center text-sm text-ink-500">
         {t.noAccountYet}{' '}
-        <Link href="/account/sign-up" className="font-semibold text-primary-700 hover:underline">
+        <Link href={signUpHref} className="font-semibold text-primary-700 hover:underline">
           {t.signUpButton}
         </Link>
       </p>

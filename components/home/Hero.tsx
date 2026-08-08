@@ -85,11 +85,11 @@ export default function Hero() {
               <motion.div
                 key={destination.slug}
                 initial={reduceMotion ? false : { opacity: 0, y: 24, scale: .92 }}
-                animate={reduceMotion ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, y: [0, -30, 4, -13, 0], scale: [1, 1.055, .985, 1.025, 1] }}
-                transition={reduceMotion ? { delay: .1 + index * .08 } : {
+                animate={{ opacity: 1, y: [0, -30, 4, -13, 0], scale: [1, 1.055, .985, 1.025, 1] }}
+                transition={{
                   opacity: { duration: .4, delay: .1 + index * .08 },
-                  scale: { duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: .55 + index * .24 },
-                  y: { duration: 2.1, repeat: Infinity, ease: 'easeInOut', delay: .55 + index * .24 },
+                  scale: { duration: 2.1, repeat: Infinity, repeatType: 'loop', repeatDelay: 0, ease: 'easeInOut', delay: .55 + index * .24 },
+                  y: { duration: 2.1, repeat: Infinity, repeatType: 'loop', repeatDelay: 0, ease: 'easeInOut', delay: .55 + index * .24 },
                 }}
               >
                 <Link href={`/destinations/${destination.slug}`} className="group block">

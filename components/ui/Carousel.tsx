@@ -30,8 +30,10 @@ export default function Carousel({
   const measure = useCallback(() => {
     const el = trackRef.current;
     if (!el || el.clientWidth === 0) return;
-    setPageCount(Math.max(1, Math.round(el.scrollWidth / el.clientWidth)));
-    setPage(Math.round(el.scrollLeft / el.clientWidth));
+    const nextPageCount = Math.max(1, Math.ceil((el.scrollWidth - 1) / el.clientWidth));
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    setPageCount(nextPageCount);
+    setPage(maxScroll > 0 ? Math.round((el.scrollLeft / maxScroll) * (nextPageCount - 1)) : 0);
   }, []);
 
   useEffect(() => {
@@ -67,9 +69,10 @@ export default function Carousel({
 
     const id = window.setInterval(() => {
       if (paused) return;
-      const current = Math.round(el.scrollLeft / el.clientWidth);
+      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+      const current = maxScroll > 0 ? Math.round((el.scrollLeft / maxScroll) * (pageCount - 1)) : 0;
       const next = current >= pageCount - 1 ? 0 : current + 1;
-      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
+      el.scrollTo({ left: pageCount > 1 ? (next / (pageCount - 1)) * maxScroll : 0, behavior: 'smooth' });
     }, autoPlayInterval);
 
     return () => {
@@ -82,13 +85,16 @@ export default function Carousel({
   const scrollBy = (dir: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+    const next = Math.max(0, Math.min(pageCount - 1, page + dir));
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    el.scrollTo({ left: pageCount > 1 ? (next / (pageCount - 1)) * maxScroll : 0, behavior: 'smooth' });
   };
 
   const goToPage = (i: number) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    el.scrollTo({ left: pageCount > 1 ? (i / (pageCount - 1)) * maxScroll : 0, behavior: 'smooth' });
   };
 
   return (

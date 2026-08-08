@@ -32,7 +32,7 @@ type AdminLayoutProps = {
 const navigation = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/destinations', label: 'Destinations', icon: Map },
-  { href: '/admin/hotels', label: 'Hotels', icon: Hotel },
+  { href: '/admin/hotels', label: 'Properties', icon: Hotel },
   { href: '/admin/requests', label: 'Property requests', icon: Inbox },
   { href: '/admin/experiences', label: 'Things to do', icon: Compass },
   { href: '/admin/reviews', label: 'Reviews', icon: MessageSquare },

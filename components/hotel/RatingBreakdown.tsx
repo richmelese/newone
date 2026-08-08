@@ -16,14 +16,14 @@ const QUALITY_LABEL_KEY = {
   fair: 'ratingFair',
 } as const;
 
-export default function RatingBreakdown({ guestRating, reviewCount }: { guestRating: number; reviewCount: number }) {
+export default function RatingBreakdown({ guestRating, reviewCount, title }: { guestRating: number; reviewCount: number; title?: string }) {
   const { t } = useLanguage();
   const breakdown = estimateRatingBreakdown(guestRating, reviewCount);
   const qualityLabel = t[QUALITY_LABEL_KEY[ratingQuality(ratingScore10(guestRating))]];
 
   return (
     <div className="rounded-card-lg bg-white p-5 shadow-card">
-      <h3 className="mb-4 font-heading text-base font-bold text-ink-800">{t.ratingBreakdownTitle}</h3>
+      <h3 className="mb-4 font-heading text-base font-bold text-ink-800">{title ?? t.ratingBreakdownTitle}</h3>
 
       <div className="flex flex-col items-start gap-1 rounded-card bg-primary-50 px-6 py-5">
         <div className="font-heading text-4xl font-extrabold leading-none text-primary-700">

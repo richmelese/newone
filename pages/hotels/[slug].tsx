@@ -4,6 +4,8 @@ import { getHotel, hotels } from '@/data/hotels';
 import { getDestination } from '@/data/destinations';
 import { useLanguage } from '@/lib/language';
 import { useViewedHistory } from '@/lib/viewedHistory';
+import { useAuth } from '@/lib/auth';
+import { useAuthModal } from '@/lib/authModal';
 import { hotelSchema } from '@/lib/structuredData';
 import Layout from '@/components/layout/Layout';
 import PageShell from '@/components/layout/PageShell';
@@ -16,9 +18,9 @@ import YouMayAlsoLike from '@/components/hotel/YouMayAlsoLike';
 import RoomAvailabilityTable from '@/components/hotel/RoomAvailabilityTable';
 import LocationSection from '@/components/hotel/LocationSection';
 import RatingBreakdown from '@/components/hotel/RatingBreakdown';
-import RankingLine from '@/components/hotel/RankingLine';
-import HotelReviewsCarousel from '@/components/hotel/HotelReviewsCarousel';
+import RecentReviewsCard from '@/components/reviews/RecentReviewsCard';
 import Reveal from '@/components/ui/Reveal';
+import Button from '@/components/ui/Button';
 import type { Hotel } from '@/types';
 
 export const getStaticPaths: GetStaticPaths = async () => ({
@@ -35,6 +37,8 @@ export const getStaticProps: GetStaticProps<{ hotel: Hotel }> = async ({ params 
 export default function HotelDetailPage({ hotel }: { hotel: Hotel }) {
   const { t, pick } = useLanguage();
   const { recordView } = useViewedHistory();
+  const { user, hydrated } = useAuth();
+  const { openSignIn } = useAuthModal();
 
   useEffect(() => {
     recordView(hotel.id);
@@ -42,6 +46,7 @@ export default function HotelDetailPage({ hotel }: { hotel: Hotel }) {
   }, [hotel.id]);
 
   const destination = getDestination(hotel.destinationSlug);
+  const writeReviewPath = `/reviews/hotel/${hotel.id}/write`;
 
   return (
     <Layout
@@ -63,10 +68,19 @@ export default function HotelDetailPage({ hotel }: { hotel: Hotel }) {
           ]}
         />
 
-        <div className="mt-4">
-          <RatingStars rating={hotel.starRating} size={14} />
-          <h1 className="mt-1 font-heading text-2xl font-bold text-ink-900">{hotel.name}</h1>
-          <p className="mt-1 text-sm text-ink-500">{pick(hotel.neighborhood)}</p>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <RatingStars rating={hotel.starRating} size={14} />
+            <h1 className="mt-1 font-heading text-2xl font-bold text-ink-900">{hotel.name}</h1>
+            <p className="mt-1 text-sm text-ink-500">{pick(hotel.neighborhood)}</p>
+          </div>
+          {hydrated && (
+            user ? (
+              <Button href={writeReviewPath} variant="outline">{t.writeReviewCta}</Button>
+            ) : (
+              <Button type="button" onClick={() => openSignIn(writeReviewPath)} variant="outline">{t.signInButton} to write a review</Button>
+            )
+          )}
         </div>
 
         <Reveal className="mt-4">
@@ -74,19 +88,13 @@ export default function HotelDetailPage({ hotel }: { hotel: Hotel }) {
         </Reveal>
 
         <div className="mt-8 space-y-10">
-          <section>
+          <section className="space-y-10">
             <RoomAvailabilityTable hotel={hotel} />
-          </section>
-
-          <section>
-            <HotelReviewsCarousel reviews={hotel.reviews} guestRating={hotel.guestRating} reviewCount={hotel.reviewCount} />
+            <RecentReviewsCard entity={{ id: hotel.id, type: 'hotel', name: { en: hotel.name, am: hotel.name }, photo: hotel.photos[0] }} />
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-            <div>
-              <RatingBreakdown guestRating={hotel.guestRating} reviewCount={hotel.reviewCount} />
-              <RankingLine hotel={hotel} destinationName={destination?.name ?? ''} className="mt-3" />
-            </div>
+            <RatingBreakdown guestRating={hotel.guestRating} reviewCount={hotel.reviewCount} title={t.hotelReviews} />
             <HotelAmenitySections hotel={hotel} />
           </section>
 

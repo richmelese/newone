@@ -18,16 +18,18 @@ type LayoutProps = {
   };
   /** Set when the page's first section is a full-bleed hero that already reserves space for the floating navbar. */
   overlapHeader?: boolean;
+  /** Account and utility pages can opt out of the promotional band. */
+  showForHotelsBand?: boolean;
 };
 
-export default function Layout({ children, seo, overlapHeader }: LayoutProps) {
+export default function Layout({ children, seo, overlapHeader, showForHotelsBand = true }: LayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Seo {...seo} />
       <Navbar overlapHeader={overlapHeader} />
       <main className={clsx('flex-1 pb-16', !overlapHeader && 'pt-24 sm:pt-28')}>
         {children}
-        <ForHotelsBand />
+        {showForHotelsBand && <ForHotelsBand />}
       </main>
       <Footer />
       <CompareBar />
