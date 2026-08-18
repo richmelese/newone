@@ -7,8 +7,17 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(key);
-      if (raw !== null) {
-        setValue(JSON.parse(raw));
+      if (raw !== null && raw !== 'undefined') {
+        if (raw === 'null') {
+          window.localStorage.removeItem(key);
+          setValue(defaultValue);
+        } else {
+          try {
+            setValue(JSON.parse(raw));
+          } catch {
+            setValue(raw as unknown as T);
+          }
+        }
       }
     } catch {
       // ignore malformed storage
@@ -22,7 +31,11 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
       setValue((prev) => {
         const resolved = typeof next === 'function' ? (next as (prev: T) => T)(prev) : next;
         try {
-          window.localStorage.setItem(key, JSON.stringify(resolved));
+          if (resolved === null || resolved === undefined) {
+            window.localStorage.removeItem(key);
+          } else {
+            window.localStorage.setItem(key, JSON.stringify(resolved));
+          }
         } catch {
           // ignore quota / privacy-mode errors
         }

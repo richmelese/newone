@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Edit3, ImageIcon, Languages, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ChangeEvent } from 'react';
+import { Edit3, ImageIcon, Languages, Loader2, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminEditModal, { adminFieldClass } from '@/components/admin/AdminEditModal';
 import AdminPagination from '@/components/admin/AdminPagination';
@@ -7,7 +7,7 @@ import { AdminButton, Panel } from '@/components/admin/AdminUi';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import Spinner from '@/components/ui/Spinner';
-import { activitiesApi, resolveApiAssetUrl, thingsToDoApi, type Activity, type ThingsToDo } from '@/lib/api';
+import { activitiesApi, resolveApiAssetUrl, thingsToDoApi, type Activity, type CreateActivityPayload, type ThingsToDo } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 
@@ -19,13 +19,22 @@ function recordId(record: Activity) {
 }
 
 function activityImage(activity: Activity) {
-  return resolveApiAssetUrl(activity.hero_image || activity.image_url || activity.image || activity.cover_image);
+  return resolveApiAssetUrl(activity.image || activity.hero_image || activity.image_url || activity.cover_image);
 }
 
 function thingActivityId(item: ThingsToDo) {
   if (typeof item.activity === 'string') return item.activity;
-  const id = item.activity.id ?? item.activity._id;
+  const id = item.activity?.id ?? item.activity?._id;
   return id === undefined ? '' : String(id);
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export default function AdminActivitiesPage() {
@@ -42,8 +51,14 @@ export default function AdminActivitiesPage() {
   const [loadingEditId, setLoadingEditId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Form state
   const [nameEn, setNameEn] = useState('');
   const [nameAm, setNameAm] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugCustomized, setSlugCustomized] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,7 +83,7 @@ export default function AdminActivitiesPage() {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return activities;
     return activities.filter((activity) =>
-      `${activity.name_en} ${activity.name_am}`.toLowerCase().includes(normalized),
+      `${activity.name_en} ${activity.name_am} ${activity.slug || ''}`.toLowerCase().includes(normalized),
     );
   }, [activities, query]);
 
@@ -92,6 +107,10 @@ export default function AdminActivitiesPage() {
     setEditing(null);
     setNameEn('');
     setNameAm('');
+    setSlug('');
+    setSlugCustomized(false);
+    setImageFile(null);
+    setImagePreview('');
     setModalOpen(true);
   }
 
@@ -102,8 +121,12 @@ export default function AdminActivitiesPage() {
     try {
       const current = await activitiesApi.getById(id, token || undefined);
       setEditing(current);
-      setNameEn(current.name_en);
-      setNameAm(current.name_am);
+      setNameEn(current.name_en || '');
+      setNameAm(current.name_am || '');
+      setSlug(current.slug || slugify(current.name_en || ''));
+      setSlugCustomized(true);
+      setImageFile(null);
+      setImagePreview(activityImage(current) || '');
       setModalOpen(true);
     } catch (caughtError) {
       show(caughtError instanceof Error ? caughtError.message : 'Unable to load the activity.', 'error');
@@ -112,23 +135,51 @@ export default function AdminActivitiesPage() {
     }
   }
 
-  async function createActivity(event: FormEvent<HTMLFormElement>) {
+  function handleNameEnChange(val: string) {
+    setNameEn(val);
+    if (!slugCustomized && !editing) {
+      setSlug(slugify(val));
+    }
+  }
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  }
+
+  async function handleSaveActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const editingId = editing ? recordId(editing) : '';
+
+    if (!editingId && !imageFile) {
+      show('Please select an image for this activity.', 'error');
+      return;
+    }
+
     setSaving(true);
     try {
-      const editingId = editing ? recordId(editing) : '';
-      const payload = {
+      const payload: CreateActivityPayload = {
+        slug: slug.trim() || slugify(nameEn),
         name_en: nameEn.trim(),
         name_am: nameAm.trim(),
+        ...(imageFile ? { image: imageFile } : {}),
       };
+
       const saved = editingId
         ? await activitiesApi.update(editingId, payload, token || undefined)
         : await activitiesApi.create(payload, token || undefined);
+
       setActivities((current) => editingId
         ? current.map((activity) => recordId(activity) === editingId ? { ...activity, ...saved } : activity)
         : [saved, ...current]);
+
       setModalOpen(false);
       setEditing(null);
+      setImageFile(null);
+      setImagePreview('');
       show(`${saved.name_en} was ${editingId ? 'updated' : 'created'} successfully.`, 'success');
     } catch (caughtError) {
       show(caughtError instanceof Error ? caughtError.message : `Unable to ${editing ? 'update' : 'create'} the activity.`, 'error');
@@ -167,7 +218,7 @@ export default function AdminActivitiesPage() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search activities..."
+              placeholder="Search activities by name or slug..."
               className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 pl-9 pr-3 text-sm outline-none focus:border-primary-300 focus:bg-white"
             />
           </div>
@@ -187,7 +238,7 @@ export default function AdminActivitiesPage() {
               const image = activityImage(activity);
               const relatedThings = id ? thingsToDoByActivity.get(id) ?? [] : [];
               return (
-                <article key={id || `${activity.name_en}-${index}`} className="grid gap-4 px-5 py-4 transition hover:bg-neutral-50 sm:grid-cols-[5rem_1fr_1fr_minmax(8rem,1fr)_auto] sm:items-center sm:px-6">
+                <article key={id || `${activity.name_en}-${index}`} className="grid gap-4 px-5 py-4 transition hover:bg-neutral-50 sm:grid-cols-[5.5rem_1fr_1fr_minmax(8rem,1fr)_auto] sm:items-center sm:px-6">
                   <div className="h-20 w-20 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
                     {image ? (
                       <img src={image} alt={activity.name_en} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
@@ -198,6 +249,9 @@ export default function AdminActivitiesPage() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-300">English</p>
                     <h2 className="mt-1 font-heading font-extrabold text-primary-900">{activity.name_en}</h2>
+                    {activity.slug && (
+                      <p className="mt-0.5 font-mono text-[11px] text-ink-400">/{activity.slug}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-300">Amharic</p>
@@ -263,21 +317,100 @@ export default function AdminActivitiesPage() {
       {modalOpen && (
         <AdminEditModal
           title={editing ? 'Edit activity' : 'Create activity'}
-          description="Add the English and Amharic names for this activity type."
+          description="Fill in the activity details, slug, and photo."
           onClose={() => { if (!saving) { setModalOpen(false); setEditing(null); } }}
-          onSubmit={createActivity}
+          onSubmit={handleSaveActivity}
           submitLabel={editing ? 'Save changes' : 'Create activity'}
           submitting={saving}
           submittingLabel={editing ? 'Saving...' : 'Creating...'}
         >
-          <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+          <label className="text-sm font-bold text-ink-600 sm:col-span-1">
             English name
-            <input required value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Hiking" className={adminFieldClass} />
+            <input
+              required
+              value={nameEn}
+              onChange={(event) => handleNameEnChange(event.target.value)}
+              placeholder="Hiking & Trekking"
+              className={adminFieldClass}
+            />
           </label>
-          <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+
+          <label className="text-sm font-bold text-ink-600 sm:col-span-1">
             Amharic name
-            <input required lang="am" value={nameAm} onChange={(event) => setNameAm(event.target.value)} placeholder="የተራራ ጉዞ" className={adminFieldClass} />
+            <input
+              required
+              lang="am"
+              value={nameAm}
+              onChange={(event) => setNameAm(event.target.value)}
+              placeholder="የተራራ ጉዞ"
+              className={adminFieldClass}
+            />
           </label>
+
+          <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+            Slug
+            <input
+              required
+              value={slug}
+              onChange={(event) => {
+                setSlug(event.target.value);
+                setSlugCustomized(true);
+              }}
+              placeholder="hiking-trekking"
+              className={`${adminFieldClass} font-mono`}
+            />
+            <span className="mt-1 block text-[11px] font-normal text-ink-400">
+              Unique URL identifier (e.g. hiking-trekking)
+            </span>
+          </label>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-bold text-ink-600">
+              Activity image {!editing && <span className="text-danger-500">*</span>}
+            </label>
+
+            {imagePreview ? (
+              <div className="relative mt-2 aspect-[16/9] w-full max-w-sm overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                <img src={imagePreview} alt="Activity preview" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview('');
+                  }}
+                  className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white transition hover:bg-black"
+                  title="Remove image"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <label className="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50 px-6 py-8 text-center transition hover:border-primary-300 hover:bg-primary-50/20">
+                <UploadCloud size={32} className="text-ink-400" />
+                <p className="mt-2 text-sm font-semibold text-ink-700">
+                  Click to upload activity image
+                </p>
+                <p className="mt-1 text-xs text-ink-400">PNG, JPG, WEBP up to 10MB</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="sr-only"
+                />
+              </label>
+            )}
+            {imagePreview && (
+              <label className="mt-2 inline-block cursor-pointer text-xs font-semibold text-primary-700 hover:underline">
+                Replace image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="sr-only"
+                />
+              </label>
+            )}
+          </div>
         </AdminEditModal>
       )}
     </AdminLayout>

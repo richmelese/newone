@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from './useLocalStorage';
-import { authApi } from './api';
+import { authApi, getStoredAuthToken, removeStoredAuthToken, storeAuthToken } from './api';
 import type { User } from '../types';
 
 type AuthContextType = {
@@ -22,8 +22,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated || !tokenHydrated || profileChecked) return;
     let cancelled = false;
 
+    const currentToken = token || getStoredAuthToken();
+    if (!currentToken) {
+      setProfileChecked(true);
+      return;
+    }
+
     authApi
-      .getProfile(token || undefined)
+      .getProfile(currentToken)
       .then((profile) => {
         if (cancelled) return;
         setUser({
@@ -32,11 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatarUrl: profile.avatar_url || undefined,
           role: profile.role,
         });
+        if (!token) {
+          setToken(currentToken);
+        }
       })
       .catch(() => {
         if (cancelled) return;
         setUser(null);
         setToken(null);
+        removeStoredAuthToken();
       })
       .finally(() => {
         if (!cancelled) setProfileChecked(true);
@@ -54,11 +64,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hydrated: hydrated && tokenHydrated && profileChecked,
       signIn: (next: User, nextToken?: string | null) => {
         setUser(next);
-        if (nextToken !== undefined) setToken(nextToken);
+        if (nextToken !== undefined) {
+          setToken(nextToken);
+          if (nextToken) {
+            storeAuthToken(nextToken);
+          } else {
+            removeStoredAuthToken();
+          }
+        }
       },
       signOut: () => {
         setUser(null);
         setToken(null);
+        removeStoredAuthToken();
       },
     }),
     [user, token, hydrated, tokenHydrated, profileChecked, setUser, setToken],

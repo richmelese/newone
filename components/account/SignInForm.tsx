@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
-import { authApi } from '@/lib/api';
+import { authApi, extractAuthToken } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
 function safeNext(value: string | string[] | undefined): string {
@@ -29,7 +29,10 @@ export default function SignInForm() {
         email: email.trim(),
         password,
       });
-      const token = account.accessToken || account.access_token || account.token;
+      const token = extractAuthToken(account);
+      if (!token) {
+        throw new Error('The login response did not include an access token.');
+      }
       const profile = await authApi.getProfile(token);
 
       signIn({
@@ -37,7 +40,7 @@ export default function SignInForm() {
         email: profile.email,
         avatarUrl: profile.avatar_url || undefined,
         role: profile.role,
-      }, token ?? null);
+      }, token);
       await router.push(safeNext(router.query.next));
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in. Please try again.');

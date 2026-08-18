@@ -1,31 +1,53 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
-const ASSET_BASE_URL = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.replace(/\/$/, '') || API_BASE_URL;
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://ethiopidia.com/api').replace(/\/$/, '');
+const ASSET_BASE_URL = (process.env.NEXT_PUBLIC_ASSET_BASE_URL || API_BASE_URL).replace(/\/$/, '');
 export const AUTH_TOKEN_STORAGE_KEY = 'ethiopidia:token';
 
-export function getStoredAuthToken() {
+export function extractAuthToken(response: unknown): string | undefined {
+  if (!response || typeof response !== 'object') return undefined;
+  const res = response as Record<string, any>;
+  const direct = res.accessToken || res.access_token || res.token || res.jwt || res.authToken || res.key;
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  if (res.data && typeof res.data === 'object') {
+    const nested = res.data.accessToken || res.data.access_token || res.data.token || res.data.jwt || res.data.authToken;
+    if (typeof nested === 'string' && nested.trim()) return nested.trim();
+  }
+  return undefined;
+}
+
+export function getStoredAuthToken(): string | undefined {
   if (typeof window === 'undefined') return undefined;
 
-  const storedToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  if (!storedToken) return undefined;
+  const storedToken =
+    window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+    window.localStorage.getItem('token') ||
+    window.localStorage.getItem('access_token');
+
+  if (!storedToken || storedToken === 'null' || storedToken === 'undefined') return undefined;
 
   try {
     const parsedToken = JSON.parse(storedToken);
-    return typeof parsedToken === 'string' && parsedToken ? parsedToken : undefined;
+    if (typeof parsedToken === 'string' && parsedToken) return parsedToken;
   } catch {
-    // Also accept tokens stored as plain strings for backwards compatibility.
-    return storedToken;
+    // Also accept tokens stored as plain strings
   }
+
+  return typeof storedToken === 'string' && storedToken ? storedToken : undefined;
 }
 
 export function storeAuthToken(token: string) {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && token) {
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify(token));
+    window.localStorage.setItem('token', token);
+    window.localStorage.setItem('access_token', token);
   }
 }
 
 export function removeStoredAuthToken() {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem('token');
+    window.localStorage.removeItem('access_token');
+    window.localStorage.removeItem('ethiopidia:user');
   }
 }
 
@@ -140,18 +162,33 @@ export type UpdateCityPayload = CityTextPayload & { hero_image?: File };
 export type Activity = {
   id?: string | number;
   _id?: string;
+  slug?: string;
   name_en: string;
   name_am: string;
+  image?: string | null;
   hero_image?: string | null;
   image_url?: string | null;
-  image?: string | null;
   cover_image?: string | null;
   created_at?: string;
   updated_at?: string;
+  [key: string]: unknown;
 };
 
-export type CreateActivityPayload = Pick<Activity, 'name_en' | 'name_am'>;
-export type UpdateActivityPayload = CreateActivityPayload;
+export type CreateActivityPayload = {
+  slug: string;
+  name_en: string;
+  name_am: string;
+  image?: File | string | null;
+  hero_image?: File | string | null;
+};
+
+export type UpdateActivityPayload = {
+  slug?: string;
+  name_en: string;
+  name_am: string;
+  image?: File | string | null;
+  hero_image?: File | string | null;
+};
 
 export type ThingsToDo = {
   id?: string | number;
@@ -473,38 +510,92 @@ export const categoriesApi = {
 };
 
 function categoryFormData(payload: CreateCategoryPayload | UpdateCategoryPayload) {
-    const body = new FormData();
-    body.append('title', payload.title);
-    body.append('description', payload.description);
-    if (payload.hero_image) body.append('hero_image', payload.hero_image);
-    body.append('city', payload.city);
-    return body;
+  const body = new FormData();
+  body.append('title', payload.title);
+  body.append('description', payload.description);
+  if (payload.hero_image) body.append('hero_image', payload.hero_image);
+  body.append('city', payload.city);
+  return body;
 }
 
+function activityFormData(payload: CreateActivityPayload | UpdateActivityPayload) {
+  const body = new FormData();
+  if (payload.slug) body.append('slug', payload.slug);
+  body.append('name_en', payload.name_en);
+  body.append('name_am', payload.name_am);
+  const image = payload.image ?? payload.hero_image;
+  if (image instanceof File) {
+    body.append('image', image);
+  } else if (typeof image === 'string' && image) {
+    body.append('image', image);
+  }
+  return body;
+}
+
+export type ActivityListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  token?: string;
+};
+
 export const activitiesApi = {
-  async list(token?: string) {
-    const response = await request<ActivityListResponse>('/activities', {
+  async list(paramsOrToken?: ActivityListParams | string, maybeToken?: string) {
+    let params: ActivityListParams = {};
+    let token: string | undefined;
+
+    if (typeof paramsOrToken === 'string') {
+      token = paramsOrToken;
+    } else if (paramsOrToken && typeof paramsOrToken === 'object') {
+      params = paramsOrToken;
+      token = params.token || maybeToken;
+    } else {
+      token = maybeToken;
+    }
+
+    const query = new URLSearchParams();
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.search) query.set('search', params.search);
+    const queryString = query.toString();
+    const path = `/activities${queryString ? `?${queryString}` : ''}`;
+
+    const response = await request<ActivityListResponse>(path, {
       method: 'GET',
       headers: authorizationHeader(token),
     });
+
     if (Array.isArray(response)) return response;
     return response.data ?? response.activities ?? response.items ?? [];
   },
   async getById(id: string | number, token?: string) {
-    const response = await request<ActivityResponse>(`/activities/${encodeURIComponent(String(id))}`, {
-      method: 'GET',
-      headers: authorizationHeader(token),
-    });
-    if ('name_en' in response) return response;
-    const activity = response.data ?? response.activity;
-    if (!activity) throw new ApiError('The API returned an invalid activity response.', 500);
-    return activity;
+    try {
+      const response = await request<ActivityResponse>(`/activities/${encodeURIComponent(String(id))}`, {
+        method: 'GET',
+        headers: authorizationHeader(token),
+      });
+      if ('name_en' in response) return response;
+      const activity = response.data ?? response.activity;
+      if (activity) return activity;
+    } catch {
+      // Fallback: search in list by slug or ID
+      const all = await activitiesApi.list(token);
+      const matched = all.find(
+        (a) => String(a.id ?? a._id) === String(id) || a.slug === String(id)
+      );
+      if (matched) return matched;
+      throw new ApiError('The activity could not be found.', 404);
+    }
+    throw new ApiError('The API returned an invalid activity response.', 500);
+  },
+  async getBySlug(slug: string, token?: string) {
+    return activitiesApi.getById(slug, token);
   },
   async create(payload: CreateActivityPayload, token?: string) {
     const response = await request<ActivityResponse>('/activities', {
       method: 'POST',
       headers: authorizationHeader(token),
-      body: JSON.stringify(payload),
+      body: activityFormData(payload),
     });
     if ('name_en' in response) return response;
     const activity = response.data ?? response.activity;
@@ -515,7 +606,7 @@ export const activitiesApi = {
     const response = await request<ActivityResponse>(`/activities/${encodeURIComponent(String(id))}`, {
       method: 'PATCH',
       headers: authorizationHeader(token),
-      body: JSON.stringify(payload),
+      body: activityFormData(payload),
     });
     if ('name_en' in response) return response;
     const activity = response.data ?? response.activity;

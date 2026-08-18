@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
-import { authApi } from '@/lib/api';
+import { authApi, extractAuthToken } from '@/lib/api';
 import { useLanguage } from '@/lib/language';
 import Button from '@/components/ui/Button';
 
@@ -53,17 +53,21 @@ export default function AuthModal({ initialMode, next, onClose }: { initialMode:
           full_name: name.trim(),
           password,
         });
+        const token = extractAuthToken(account);
         signIn(
           {
             name: account.full_name || name.trim(),
             email: account.email || email.trim(),
             avatarUrl: account.avatar_url || undefined,
           },
-          account.accessToken || account.access_token || null,
+          token || null,
         );
       } else {
         const login = await authApi.login({ email: email.trim(), password });
-        const token = login.accessToken || login.access_token || login.token;
+        const token = extractAuthToken(login);
+        if (!token) {
+          throw new Error('The login response did not include an access token.');
+        }
         const profile = await authApi.getProfile(token);
         signIn(
           {
@@ -72,7 +76,7 @@ export default function AuthModal({ initialMode, next, onClose }: { initialMode:
             avatarUrl: profile.avatar_url || undefined,
             role: profile.role,
           },
-          token ?? null,
+          token,
         );
       }
       await finish();

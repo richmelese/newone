@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { Eye, EyeOff, Landmark } from 'lucide-react';
 import Seo from '@/components/layout/Seo';
 import Button from '@/components/ui/Button';
-import { authApi, removeStoredAuthToken, storeAuthToken } from '@/lib/api';
+import { authApi, extractAuthToken, removeStoredAuthToken, storeAuthToken } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 function safeNext(value: string | string[] | undefined) {
@@ -34,14 +34,14 @@ export default function AdminLoginPage() {
 
     try {
       const login = await authApi.login({ email: email.trim(), password });
-      const token = login.accessToken || login.access_token || login.token;
+      const token = extractAuthToken(login);
       if (!token) {
         throw new Error('The login response did not include an access token.');
       }
 
       storeAuthToken(token);
       storedLoginToken = true;
-      const profile = await authApi.getProfile();
+      const profile = await authApi.getProfile(token);
 
       if (profile.role?.toUpperCase() !== 'ADMIN') {
         throw new Error('This account does not have administrator access.');

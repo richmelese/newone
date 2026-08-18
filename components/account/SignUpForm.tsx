@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
-import { authApi } from '@/lib/api';
+import { authApi, extractAuthToken } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
 function safeNext(value: string | string[] | undefined): string {
@@ -33,6 +33,7 @@ export default function SignUpForm() {
         password,
         ...(avatarUrl.trim() && { avatar_url: avatarUrl.trim() }),
       });
+      const token = extractAuthToken(account);
 
       signIn(
         {
@@ -40,7 +41,7 @@ export default function SignUpForm() {
           email: account.email || email.trim(),
           avatarUrl: account.avatar_url || undefined,
         },
-        account.accessToken || account.access_token || null,
+        token || null,
       );
       await router.push(safeNext(router.query.next));
     } catch (caughtError) {
