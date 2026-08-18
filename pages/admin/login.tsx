@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { Eye, EyeOff, Landmark } from 'lucide-react';
 import Seo from '@/components/layout/Seo';
 import Button from '@/components/ui/Button';
-import { authApi } from '@/lib/api';
+import { authApi, removeStoredAuthToken, storeAuthToken } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 function safeNext(value: string | string[] | undefined) {
@@ -30,10 +30,18 @@ export default function AdminLoginPage() {
     setError('');
     setIsSubmitting(true);
 
+    let storedLoginToken = false;
+
     try {
       const login = await authApi.login({ email: email.trim(), password });
       const token = login.accessToken || login.access_token || login.token;
-      const profile = await authApi.getProfile(token);
+      if (!token) {
+        throw new Error('The login response did not include an access token.');
+      }
+
+      storeAuthToken(token);
+      storedLoginToken = true;
+      const profile = await authApi.getProfile();
 
       if (profile.role?.toUpperCase() !== 'ADMIN') {
         throw new Error('This account does not have administrator access.');
@@ -46,10 +54,11 @@ export default function AdminLoginPage() {
           avatarUrl: profile.avatar_url || undefined,
           role: profile.role,
         },
-        token ?? null,
+        token,
       );
       await router.push(safeNext(router.query.next));
     } catch (caughtError) {
+      if (storedLoginToken) removeStoredAuthToken();
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in. Please try again.');
     } finally {
       setIsSubmitting(false);

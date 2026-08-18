@@ -1,5 +1,33 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
 const ASSET_BASE_URL = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.replace(/\/$/, '') || API_BASE_URL;
+export const AUTH_TOKEN_STORAGE_KEY = 'ethiopidia:token';
+
+export function getStoredAuthToken() {
+  if (typeof window === 'undefined') return undefined;
+
+  const storedToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  if (!storedToken) return undefined;
+
+  try {
+    const parsedToken = JSON.parse(storedToken);
+    return typeof parsedToken === 'string' && parsedToken ? parsedToken : undefined;
+  } catch {
+    // Also accept tokens stored as plain strings for backwards compatibility.
+    return storedToken;
+  }
+}
+
+export function storeAuthToken(token: string) {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify(token));
+  }
+}
+
+export function removeStoredAuthToken() {
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+}
 
 export type RegisterPayload = {
   email: string;
@@ -328,13 +356,14 @@ export const authApi = {
   getProfile(token?: string) {
     return request<ProfileResponse>('/auth/me', {
       method: 'GET',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: authorizationHeader(token),
     });
   },
 };
 
 function authorizationHeader(token?: string) {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+  const authToken = token || getStoredAuthToken();
+  return authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
 }
 
 function cityFormData(payload: CreateCityPayload | UpdateCityPayload) {
