@@ -3,9 +3,9 @@ import { useRouter } from 'next/router';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
+import { authApi } from '@/lib/api';
 import { useLanguage } from '@/lib/language';
 import Button from '@/components/ui/Button';
-import GoogleSignInButton from '@/components/account/GoogleSignInButton';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
@@ -14,13 +14,15 @@ function safeNext(value?: string) {
 }
 
 export default function AuthModal({ initialMode, next, onClose }: { initialMode: AuthMode; next?: string; onClose: () => void }) {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -41,13 +43,44 @@ export default function AuthModal({ initialMode, next, onClose }: { initialMode:
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    signIn({ name: mode === 'sign-up' ? name.trim() : email.split('@')[0] || 'Traveler', email: email.trim() });
-    await finish();
-  }
+    setError('');
+    setIsSubmitting(true);
 
-  async function handleGoogle() {
-    signInWithGoogle();
-    await finish();
+    try {
+      if (mode === 'sign-up') {
+        const account = await authApi.register({
+          email: email.trim(),
+          full_name: name.trim(),
+          password,
+        });
+        signIn(
+          {
+            name: account.full_name || name.trim(),
+            email: account.email || email.trim(),
+            avatarUrl: account.avatar_url || undefined,
+          },
+          account.accessToken || account.access_token || null,
+        );
+      } else {
+        const login = await authApi.login({ email: email.trim(), password });
+        const token = login.accessToken || login.access_token || login.token;
+        const profile = await authApi.getProfile(token);
+        signIn(
+          {
+            name: profile.full_name,
+            email: profile.email,
+            avatarUrl: profile.avatar_url || undefined,
+            role: profile.role,
+          },
+          token ?? null,
+        );
+      }
+      await finish();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Authentication failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const isSignUp = mode === 'sign-up';
@@ -79,15 +112,13 @@ export default function AuthModal({ initialMode, next, onClose }: { initialMode:
             {t.passwordLabel}
             <input type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-neutral-300 px-3.5 text-sm outline-none focus:border-primary-500" />
           </label>
-          <Button type="submit" size="lg" fullWidth>{isSignUp ? t.signUpButton : t.signInButton}</Button>
+          {error && <p role="alert" className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}
+          <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
+            {isSubmitting ? (isSignUp ? 'Creating account…' : 'Signing in…') : (isSignUp ? t.signUpButton : t.signInButton)}
+          </Button>
         </form>
 
-        <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-ink-400">
-          <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
-        </div>
-        <GoogleSignInButton onClick={handleGoogle} label={isSignUp ? 'Sign up with Google' : 'Continue with Google'} />
-
-        <p className="mt-6 text-center text-sm text-ink-500">
+        <p className="mt-5 text-center text-sm text-ink-500">
           {isSignUp ? t.haveAccountAlready : t.noAccountYet}{' '}
           <button type="button" onClick={() => setMode(isSignUp ? 'sign-in' : 'sign-up')} className="font-semibold text-primary-700 hover:underline">
             {isSignUp ? t.signInButton : t.signUpButton}

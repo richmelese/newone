@@ -47,6 +47,7 @@ export default function Navbar(_props: NavbarProps) {
     { href: '/search', label: t.navHotels },
     { href: '/destinations', label: t.navDestinations },
     { href: '/experiences', label: t.navExperiences },
+    { href: '/blogs', label: 'Blog' },
   ];
 
   return (

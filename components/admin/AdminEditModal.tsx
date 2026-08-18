@@ -7,12 +7,18 @@ export default function AdminEditModal({
   children,
   onClose,
   onSubmit,
+  submitLabel = 'Save changes',
+  submitting = false,
+  submittingLabel = 'Saving…',
 }: {
   title: string;
   description: string;
   children: ReactNode;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitLabel?: string;
+  submitting?: boolean;
+  submittingLabel?: string;
 }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
@@ -24,8 +30,8 @@ export default function AdminEditModal({
         </div>
         <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">{children}</div>
         <div className="sticky bottom-0 flex justify-end gap-2 border-t border-neutral-200 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
-          <button type="button" onClick={onClose} className="rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-bold text-ink-500 hover:bg-neutral-100">Cancel</button>
-          <button type="submit" className="rounded-xl bg-primary-800 px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-primary-700">Save changes</button>
+          <button type="button" onClick={onClose} disabled={submitting} className="rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-bold text-ink-500 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={submitting} className="rounded-xl bg-primary-800 px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-primary-700 disabled:cursor-wait disabled:opacity-60">{submitting ? submittingLabel : submitLabel}</button>
         </div>
       </form>
     </div>

@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
+import { authApi } from '@/lib/api';
 import Button from '@/components/ui/Button';
-import GoogleSignInButton from '@/components/account/GoogleSignInButton';
 
 function safeNext(value: string | string[] | undefined): string {
   return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/account/profile';
@@ -12,20 +12,38 @@ function safeNext(value: string | string[] | undefined): string {
 
 export default function SignInForm() {
   const { t } = useLanguage();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    signIn({ name: email.split('@')[0] || 'Traveler', email });
-    router.push(safeNext(router.query.next));
-  };
+    setError('');
+    setIsSubmitting(true);
 
-  const handleGoogleSignIn = () => {
-    signInWithGoogle();
-    router.push(safeNext(router.query.next));
+    try {
+      const account = await authApi.login({
+        email: email.trim(),
+        password,
+      });
+      const token = account.accessToken || account.access_token || account.token;
+      const profile = await authApi.getProfile(token);
+
+      signIn({
+        name: profile.full_name,
+        email: profile.email,
+        avatarUrl: profile.avatar_url || undefined,
+        role: profile.role,
+      }, token ?? null);
+      await router.push(safeNext(router.query.next));
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const signUpHref = `/account/sign-up?next=${encodeURIComponent(safeNext(router.query.next))}`;
@@ -58,13 +76,14 @@ export default function SignInForm() {
           className="w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary-500"
         />
       </div>
-      <Button type="submit" fullWidth size="lg">
-        {t.signInButton}
+      {error && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      <Button type="submit" fullWidth size="lg" disabled={isSubmitting}>
+        {isSubmitting ? 'Signing in…' : t.signInButton}
       </Button>
-      <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-wider text-ink-400">
-        <span className="h-px flex-1 bg-neutral-200" />or<span className="h-px flex-1 bg-neutral-200" />
-      </div>
-      <GoogleSignInButton onClick={handleGoogleSignIn} />
       <p className="text-center text-sm text-ink-500">
         {t.noAccountYet}{' '}
         <Link href={signUpHref} className="font-semibold text-primary-700 hover:underline">

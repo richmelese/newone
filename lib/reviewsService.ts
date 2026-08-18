@@ -1,5 +1,6 @@
 import { mockReviews } from '@/data/mockReviews';
 import type { EntityReview, ReviewAuthor, ServiceType, TripType, Localized } from '@/types';
+import { reviewsApi } from '@/lib/api';
 
 const USER_REVIEWS_KEY = 'ethiopidia:reviews:user';
 const VOTES_KEY = 'ethiopidia:reviews:votes';
@@ -74,6 +75,44 @@ export async function getReviews(entityId: string, type: ServiceType): Promise<E
     .map((r) => applyVoteDelta(r, deltas))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return delay(reviews);
+}
+
+export async function getReviewsBySubject(entityId: string, type: ServiceType, entityName: Localized): Promise<EntityReview[]> {
+  const apiReviews = await reviewsApi.listBySubject(entityId);
+  const allowedTripTypes: TripType[] = ['solo', 'couple', 'family', 'friends', 'business'];
+  return apiReviews
+    .filter((review) => ['APPROVED', 'PUBLISHED'].includes(review.status?.toUpperCase() ?? ''))
+    .map((review) => {
+      const normalizedTripType = review.trip_type?.toLowerCase() as TripType | undefined;
+      const tripType = normalizedTripType && allowedTripTypes.includes(normalizedTripType) ? normalizedTripType : 'solo';
+      return {
+        id: String(review.id ?? review._id ?? `review-${review.created_at ?? Math.random()}`),
+        entityId,
+        entityType: type,
+        entityName,
+        author: {
+          name: review.user?.full_name || 'Ethiopidia traveler',
+          email: review.user?.email || '',
+        },
+        rating: review.overall_rating ?? 0,
+        subRatings: {
+          cleanliness: review.cleanliness_rating ?? 0,
+          service: review.service_rating ?? 0,
+          location: review.location_rating ?? 0,
+          value: review.value_rating ?? 0,
+        },
+        title: { en: review.title ?? '', am: review.title ?? '' },
+        text: { en: review.content ?? '', am: review.content ?? '' },
+        tripType,
+        visitDate: review.published_at ?? review.created_at ?? new Date().toISOString(),
+        photos: [],
+        verified: Boolean(review.user?.email_verified),
+        status: 'published' as const,
+        helpfulCount: 0,
+        createdAt: review.created_at ?? new Date().toISOString(),
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function submitReview(input: NewReviewInput): Promise<EntityReview> {

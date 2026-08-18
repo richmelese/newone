@@ -1,0 +1,240 @@
+{
+  "destination": {
+    "id": "destination-uuid",
+    "slug": "addis-ababa",
+    "name_en": "Addis Ababa",
+    "name_am": "አዲስ አበባ",
+    "region_en": "Addis Ababa",
+    "region_am": "አዲስ አበባ",
+    "tagline_en": "Africa's diplomatic capital",
+    "tagline_am": "የአፍሪካ ዲፕሎማሲያዊ ዋና ከተማ",
+    "short_description_en": "Capital city of Ethiopia",
+    "short_description_am": "የኢትዮጵያ ዋና ከተማ",
+    "long_description_en": "Full destination description in English.",
+    "long_description_am": "ሙሉ የመዳረሻ መግለጫ በአማርኛ።",
+    "hero_image": "https://example.com/addis-ababa-hero.jpg",
+    "hero_alt_en": "Addis Ababa skyline",
+    "hero_alt_am": "የአዲስ አበባ ከተማ እይታ",
+    "card_image": "https://example.com/addis-ababa-card.jpg",
+    "best_time_en": "October to February",
+    "best_time_am": "ከጥቅምት እስከ የካቲት",
+    "latitude": 9.03,
+    "longitude": 38.74,
+    "is_iconic": true,
+    "status": "published",
+    "sort_order": 1,
+    "seo_title_en": "Visit Addis Ababa",
+    "seo_title_am": "አዲስ አበባን ይጎብኙ",
+    "seo_description_en": "Discover Addis Ababa, its culture, history, and attractions.",
+    "seo_description_am": "የአዲስ አበባን ባህል፣ ታሪክና መስህቦች ይወቁ።",
+    "social_image": "https://example.com/addis-ababa-social.jpg",
+    "gallery": [
+      {
+        "id": "gallery-image-uuid",
+        "image_url": "https://example.com/meskel-square.jpg",
+        "title_en": "Meskel Square",
+        "title_am": "መስቀል አደባባይ",
+        "subtitle_en": "A central gathering place in Addis Ababa.",
+        "subtitle_am": "በአዲስ አበባ የሚገኝ ዋና የሕዝብ መሰብሰቢያ።",
+        "alt_en": "People walking through Meskel Square",
+        "alt_am": "በመስቀል አደባባይ የሚራመዱ ሰዎች",
+        "credit": "Ethiopidia",
+        "sort_order": 1
+      }
+    ],
+    "guide_sections": [
+      {
+        "id": "guide-section-uuid",
+        "title_en": "Getting Around",
+        "title_am": "መጓጓዣ",
+        "subtitle_en": "How to move around the city",
+        "subtitle_am": "በከተማዋ ውስጥ እንዴት መጓዝ እንደሚቻል",
+        "body_en": "Full guide content in English.",
+        "body_am": "ሙሉ የመጓጓዣ መመሪያ በአማርኛ።",
+        "image_url": "https://example.com/addis-transport.jpg",
+        "image_alt_en": "Addis Ababa light rail",
+        "image_alt_am": "የአዲስ አበባ ቀላል ባቡር",
+        "image_position": "right",
+        "sort_order": 1
+      }
+    ]
+  },
+  "thing_to_do_category": {
+    "id": "category-uuid",
+    "slug": "culture",
+    "name_en": "Culture",
+    "name_am": "ባህል",
+    "description_en": "Cultural places and local experiences.",
+    "description_am": "ባህላዊ ቦታዎችና የአካባቢ ተሞክሮዎች።",
+    "icon": "landmark",
+    "cover_image": "https://example.com/culture.jpg",
+    "sort_order": 1,
+    "is_active": true
+  },
+  "thing_to_do": {
+    "id": "thing-to-do-uuid",
+    "destination_id": "destination-uuid",
+    "category_id": "category-uuid",
+    "slug": "national-museum-ethiopia",
+    "title_en": "National Museum of Ethiopia",
+    "title_am": "የኢትዮጵያ ብሔራዊ ሙዚየም",
+    "subtitle_en": "Explore Ethiopia's ancient story",
+    "subtitle_am": "የኢትዮጵያን ጥንታዊ ታሪክ ይወቁ",
+    "short_description_en": "A museum presenting Ethiopia's archaeological and cultural heritage.",
+    "short_description_am": "የኢትዮጵያን አርኪኦሎጂያዊና ባህላዊ ቅርስ የሚያሳይ ሙዚየም።",
+    "long_description_en": "Full activity description in English.",
+    "long_description_am": "ሙሉ የእንቅስቃሴው መግለጫ በአማርኛ።",
+    "hero_image": "https://example.com/national-museum.jpg",
+    "hero_alt_en": "Entrance to the National Museum of Ethiopia",
+    "hero_alt_am": "የኢትዮጵያ ብሔራዊ ሙዚየም መግቢያ",
+    "address_en": "King George VI Street, Addis Ababa",
+    "address_am": "ኪንግ ጆርጅ ስድስተኛ ጎዳና፣ አዲስ አበባ",
+    "latitude": 9.038,
+    "longitude": 38.761,
+    "opening_hours": {
+      "monday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "tuesday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "wednesday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "thursday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "friday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "saturday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      },
+      "sunday": {
+        "open": "09:00",
+        "close": "17:00",
+        "closed": false
+      }
+    },
+    "duration_minutes": 120,
+    "price_from_etb": 200,
+    "contact_phone": "+251900000000",
+    "contact_email": "info@example.com",
+    "website_url": "https://example.com",
+    "booking_url": "https://example.com/book",
+    "booking_site_name": "Official Website",
+    "practical_info_en": "Bring identification and arrive before the final admission time.",
+    "practical_info_am": "መታወቂያ ይዘው ይምጡና ከመጨረሻው የመግቢያ ሰዓት በፊት ይድረሱ።",
+    "is_free": false,
+    "is_featured": true,
+    "status": "published",
+    "sort_order": 1,
+    "seo_title_en": "National Museum of Ethiopia",
+    "seo_title_am": "የኢትዮጵያ ብሔራዊ ሙዚየም",
+    "seo_description_en": "Plan your visit to the National Museum of Ethiopia.",
+    "seo_description_am": "ወደ ኢትዮጵያ ብሔራዊ ሙዚየም ጉብኝትዎን ያቅዱ።",
+    "social_image": "https://example.com/national-museum-social.jpg",
+    "gallery": [
+      {
+        "id": "activity-gallery-uuid",
+        "image_url": "https://example.com/museum-gallery.jpg",
+        "title_en": "Main Exhibition",
+        "title_am": "ዋና ኤግዚቢሽን",
+        "subtitle_en": "Archaeological discoveries from across Ethiopia.",
+        "subtitle_am": "ከመላው ኢትዮጵያ የተገኙ አርኪኦሎጂያዊ ግኝቶች።",
+        "alt_en": "Museum exhibition room",
+        "alt_am": "የሙዚየም ኤግዚቢሽን ክፍል",
+        "credit": "Ethiopidia",
+        "sort_order": 1
+      }
+    ],
+    "guide_sections": [
+      {
+        "id": "activity-guide-uuid",
+        "title_en": "What to See",
+        "title_am": "ምን ማየት እንደሚቻል",
+        "subtitle_en": "Highlights of the museum",
+        "subtitle_am": "የሙዚየሙ ዋና ዋና ነገሮች",
+        "body_en": "Full guide content in English.",
+        "body_am": "ሙሉ መመሪያ በአማርኛ።",
+        "image_url": "https://example.com/museum-guide.jpg",
+        "image_alt_en": "Historic museum collection",
+        "image_alt_am": "ታሪካዊ የሙዚየም ስብስብ",
+        "image_position": "left",
+        "sort_order": 1
+      }
+    ],
+    "menu_items": [
+      {
+        "id": "menu-item-uuid",
+        "name_en": "Traditional Coffee",
+        "name_am": "ባህላዊ ቡና",
+        "description_en": "Fresh Ethiopian coffee.",
+        "description_am": "ትኩስ የኢትዮጵያ ቡና።",
+        "image_url": "https://example.com/coffee.jpg",
+        "price_etb": 80,
+        "dietary_labels": ["vegan"],
+        "is_available": true,
+        "sort_order": 1
+      }
+    ],
+    "services": [
+      {
+        "id": "service-uuid",
+        "name_en": "Guided Tour",
+        "name_am": "የመሪ ጉብኝት",
+        "description_en": "A guided museum experience.",
+        "description_am": "በመሪ የሚደረግ የሙዚየም ጉብኝት።",
+        "image_url": "https://example.com/guided-tour.jpg",
+        "duration_minutes": 60,
+        "price_from_etb": 500,
+        "is_available": true,
+        "sort_order": 1
+      }
+    ],
+    "schedule": [
+      {
+        "id": "schedule-uuid",
+        "title_en": "English Guided Tour",
+        "title_am": "የእንግሊዝኛ መሪ ጉብኝት",
+        "description_en": "Daily guided tour in English.",
+        "description_am": "በየቀኑ በእንግሊዝኛ የሚደረግ የመሪ ጉብኝት።",
+        "frequency": "daily",
+        "day_of_week": null,
+        "event_date": null,
+        "start_time": "10:00",
+        "end_time": "11:00",
+        "ticket_price_etb": 500,
+        "booking_url": "https://example.com/book-tour",
+        "is_active": true,
+        "sort_order": 1
+      }
+    ],
+    "itinerary": [
+      {
+        "id": "itinerary-stop-uuid",
+        "stop_number": 1,
+        "title_en": "Main Collection",
+        "title_am": "ዋና ስብስብ",
+        "description_en": "Explore the museum's main collection.",
+        "description_am": "የሙዚየሙን ዋና ስብስብ ይመልከቱ።",
+        "image_url": "https://example.com/main-collection.jpg",
+        "duration_minutes": 30,
+        "latitude": 9.038,
+        "longitude": 38.761
+      }
+    ]
+  }
+}

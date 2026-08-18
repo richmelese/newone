@@ -1,103 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { Edit3, Eye, ImageIcon, MapPin, Plus, Search } from 'lucide-react';
+import { Eye, Plus, Search, Trash2 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import AdminEditModal, { adminFieldClass, adminTextAreaClass } from '@/components/admin/AdminEditModal';
 import AdminPagination from '@/components/admin/AdminPagination';
-import { AdminButton, Panel, StatusPill, TableEmpty } from '@/components/admin/AdminUi';
-import { destinations } from '@/data/destinations';
-import { experiences } from '@/data/experiences';
-import { loadAdminCreated, loadAdminDrafts, saveAdminCreated } from '@/lib/adminDrafts';
-import { seededPhoto } from '@/lib/images';
-import type { Experience } from '@/types';
+import { AdminButton, Panel, TableEmpty } from '@/components/admin/AdminUi';
+import Spinner from '@/components/ui/Spinner';
+import ErrorState from '@/components/ui/ErrorState';
+import { activitiesApi, citiesApi, resolveApiAssetUrl, thingsToDoApi, type Activity, type City, type CreateThingsToDoPayload, type ThingsToDo } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 const PAGE_SIZE = 9;
+type ExperienceForm = Omit<CreateThingsToDoPayload, 'hero_image'> & { hero_image: string };
+const EMPTY_FORM: ExperienceForm = { slug: '', name_en: '', name_am: '', description_en: '', description_am: '', hero_image: '', activity: '', city: '' };
+const recordId = (record: { id?: string | number; _id?: string }) => record.id ?? record._id;
 
 export default function AdminExperiencesPage() {
-  const router = useRouter();
-  const [items, setItems] = useState<Experience[]>(experiences);
-  const categories = ['All', ...Array.from(new Set(items.map((item) => item.category))).sort()];
-  const [category, setCategory] = useState('All');
-  const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const filtered = useMemo(() => items.filter((experience) => {
-    const destination = destinations.find((item) => item.slug === experience.destinationSlug)?.name ?? '';
-    return (category === 'All' || experience.category === category)
-      && `${experience.name.en} ${destination}`.toLowerCase().includes(query.toLowerCase());
-  }), [category, items, query]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { token } = useAuth();
+  const [items, setItems] = useState<ThingsToDo[]>([]); const [cities, setCities] = useState<City[]>([]); const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [query, setQuery] = useState(''); const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false); const [saving, setSaving] = useState(false); const [deletingId, setDeletingId] = useState(''); const [form, setForm] = useState(EMPTY_FORM);
+  const load = useCallback(async () => { setLoading(true); setError(''); try { const [things, cityItems, activityItems] = await Promise.all([thingsToDoApi.list(token || undefined), citiesApi.list(token || undefined), activitiesApi.list(token || undefined)]); setItems(things); setCities(cityItems); setActivities(activityItems); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load things to do.'); } finally { setLoading(false); } }, [token]);
+  useEffect(() => { void load(); }, [load]); useEffect(() => setPage(1), [query]);
+  const filtered = useMemo(() => items.filter(item => `${item.name_en} ${item.name_am} ${item.slug}`.toLowerCase().includes(query.toLowerCase())), [items, query]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const update = (field: keyof ExperienceForm, value: string) => setForm(current => ({ ...current, [field]: value }));
+  async function create(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setSaving(true); try { const saved = await thingsToDoApi.create(form, token || undefined); setItems(current => [saved, ...current]); setModalOpen(false); setForm(EMPTY_FORM); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create this activity.'); } finally { setSaving(false); } }
+  async function remove(item: ThingsToDo) { const id = recordId(item); if (!id || !window.confirm(`Delete “${item.name_en}”?`)) return; setDeletingId(String(id)); try { await thingsToDoApi.delete(id, token || undefined); setItems(current => current.filter(entry => recordId(entry) !== id)); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete this activity.'); } finally { setDeletingId(''); } }
 
-  useEffect(() => setPage(1), [category, query]);
-  useEffect(() => {
-    const created = loadAdminCreated<Experience>('experiences');
-    const drafts = loadAdminDrafts<Experience>('experiences');
-    const allItems = [...experiences, ...created.filter((item) => !experiences.some((experience) => experience.id === item.id))];
-    setItems(allItems.map((item) => ({ ...item, ...drafts[item.id] })));
-  }, []);
-
-  function createActivity() {
-    const stamp = Date.now();
-    const id = `activity-${stamp}`;
-    const activity: Experience = {
-      id,
-      destinationSlug: destinations[0].slug,
-      name: { en: 'Untitled activity', am: '' },
-      description: { en: '', am: '' },
-      photo: seededPhoto(id, 1200, 800),
-      category: 'Culture',
-      gallery: [],
-      bookable: false,
-    };
-    saveAdminCreated('experiences', activity);
-    void router.push(`/admin/experiences/${id}/edit`);
-  }
-
-  return (
-    <AdminLayout
-      title="Things to do"
-      description="Curate the activities, cultural moments, food, history, and local stories shown to travelers."
-      eyebrow="Things to do catalog"
-      actions={<AdminButton onClick={createActivity}><Plus size={16} /> New activity</AdminButton>}
-    >
-      <Panel>
-        <div className="border-b border-neutral-200 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full lg:max-w-sm"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search things to do..." className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 pl-9 pr-3 text-sm outline-none focus:border-primary-300 focus:bg-white" /></div>
-            <p className="text-xs font-semibold text-ink-400">{filtered.length} of {items.length} activities</p>
-          </div>
-          <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1">
-            {categories.map((item) => <button key={item} type="button" onClick={() => setCategory(item)} className={`shrink-0 rounded-pill px-3.5 py-2 text-xs font-bold transition ${category === item ? 'bg-primary-800 text-white' : 'bg-neutral-100 text-ink-500 hover:bg-primary-50'}`}>{item}</button>)}
-          </div>
-        </div>
-
-        {filtered.length > 0 ? (
-          <div className="grid gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3 sm:p-5">
-            {paginated.map((experience) => {
-              const destination = destinations.find((item) => item.slug === experience.destinationSlug);
-              return (
-                <article key={experience.id} className="flex gap-4 rounded-card border border-neutral-200 p-3 transition hover:border-primary-200 hover:shadow-soft">
-                  <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-xl bg-neutral-100 sm:h-36 sm:w-36">
-                    <Image src={experience.photo} alt={experience.name.en} fill sizes="144px" className="object-cover" />
-                    {experience.gallery?.length ? <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-pill bg-primary-900/75 px-2 py-1 text-[9px] font-bold text-white backdrop-blur"><ImageIcon size={10} /> {experience.gallery.length + 1}</span> : null}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col py-1">
-                    <div className="flex items-start justify-between gap-2"><StatusPill tone="blue">{experience.category}</StatusPill><StatusPill tone="green">Published</StatusPill></div>
-                    <h2 className="mt-3 line-clamp-2 font-heading text-base font-extrabold text-primary-900">{experience.name.en}</h2>
-                    <p className="mt-1 flex items-center gap-1 text-xs text-ink-400"><MapPin size={11} /> {destination?.name}</p>
-                    <div className="mt-auto flex gap-2 pt-3">
-                      <Link href={`/admin/experiences/${experience.id}/edit`} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-800 px-2 py-2 text-[11px] font-bold text-white"><Edit3 size={12} /> Edit</Link>
-                      <Link href={`/experiences/${experience.id}`} className="flex items-center justify-center rounded-lg border border-neutral-200 px-3 text-ink-500 hover:bg-neutral-100" aria-label="Preview"><Eye size={14} /></Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : <TableEmpty message="No activities match this category and search." />}
-        <AdminPagination page={page} pageCount={pageCount} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
-      </Panel>
-    </AdminLayout>
-  );
+  return <AdminLayout title="Things to do" description="Create and manage traveler activities from the Ethiopidia API." eyebrow="Things to do catalog" actions={<AdminButton onClick={() => { setForm(EMPTY_FORM); setModalOpen(true); }}><Plus size={16} /> New activity</AdminButton>}>
+    <Panel><div className="border-b border-neutral-200 p-5"><div className="relative max-w-sm"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search things to do..." className="h-10 w-full rounded-xl border border-neutral-200 bg-neutral-100 pl-9 pr-3 text-sm outline-none" /></div></div>
+      {loading ? <div className="flex min-h-72 items-center justify-center"><Spinner /></div> : error && items.length === 0 ? <div className="p-5"><ErrorState title="Could not load things to do" subtitle={error} retryLabel="Try again" onRetry={() => void load()} /></div> : paginated.length === 0 ? <TableEmpty message="No things to do found." /> : <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">{paginated.map(item => { const id = recordId(item); const image = resolveApiAssetUrl(item.hero_image); return <article key={id ?? item.slug} className="overflow-hidden rounded-card border border-neutral-200"><div className="relative aspect-[16/9] bg-neutral-100">{image && <Image src={image} alt={item.name_en} fill unoptimized sizes="400px" className="object-cover" />}</div><div className="p-4"><h2 className="font-heading font-extrabold text-primary-900">{item.name_en}</h2><p className="mt-1 text-xs text-ink-400">/{item.slug}</p><div className="mt-4 flex gap-2"><Link href={`/things-to-do/${item.slug}`} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-800 px-3 py-2.5 text-xs font-bold text-white"><Eye size={14} /> View</Link><button type="button" disabled={!id || deletingId === String(id)} onClick={() => void remove(item)} className="rounded-xl border border-danger-500/25 px-3 text-danger-500 hover:bg-danger-500 hover:text-white disabled:opacity-50"><Trash2 size={14} /></button></div></div></article>; })}</div>}
+      <AdminPagination page={page} pageCount={pageCount} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+    </Panel>
+    {modalOpen && <AdminEditModal title="Create Things To Do" description="Add bilingual content and connect it to an activity and city." onClose={() => !saving && setModalOpen(false)} onSubmit={create} submitLabel="Create activity" submitting={saving} submittingLabel="Creating…">
+      <label className="text-sm font-bold text-ink-600">Slug<input required value={form.slug} onChange={e => update('slug', e.target.value)} placeholder="mountain-hiking" className={adminFieldClass} /></label>
+      <label className="text-sm font-bold text-ink-600">Hero image URL<input required type="url" value={form.hero_image} onChange={e => update('hero_image', e.target.value)} className={adminFieldClass} /></label>
+      <label className="text-sm font-bold text-ink-600">English name<input required value={form.name_en} onChange={e => update('name_en', e.target.value)} className={adminFieldClass} /></label>
+      <label className="text-sm font-bold text-ink-600">Amharic name<input required value={form.name_am} onChange={e => update('name_am', e.target.value)} className={adminFieldClass} /></label>
+      <label className="text-sm font-bold text-ink-600">English description<textarea required rows={4} value={form.description_en} onChange={e => update('description_en', e.target.value)} className={adminTextAreaClass} /></label>
+      <label className="text-sm font-bold text-ink-600">Amharic description<textarea required rows={4} value={form.description_am} onChange={e => update('description_am', e.target.value)} className={adminTextAreaClass} /></label>
+      <label className="text-sm font-bold text-ink-600">Activity<select required value={form.activity} onChange={e => update('activity', e.target.value)} className={adminFieldClass}><option value="">Select activity</option>{activities.map(item => { const id = recordId(item); return id ? <option key={id} value={id}>{item.name_en}</option> : null; })}</select></label>
+      <label className="text-sm font-bold text-ink-600">City<select required value={form.city} onChange={e => update('city', e.target.value)} className={adminFieldClass}><option value="">Select city</option>{cities.map(item => { const id = recordId(item); return id ? <option key={id} value={id}>{item.name_en}</option> : null; })}</select></label>
+    </AdminEditModal>}
+  </AdminLayout>;
 }

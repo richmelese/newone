@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useLanguage } from '@/lib/language';
 import { useToast } from '@/lib/toast';
 import { serviceConfig } from '@/data/serviceConfig';
-import { submitReview } from '@/lib/reviewsService';
+import { reviewsApi, reviewSubjectsApi, type CreateReviewPayload } from '@/lib/api';
 import StarRating from '@/components/reviews/StarRating';
 import TripTypeChips from '@/components/reviews/TripTypeChips';
 import Button from '@/components/ui/Button';
@@ -15,8 +15,8 @@ function todayIso() {
 }
 
 export default function ReviewPageForm({ entity, returnHref, onSubmitted }: { entity: ReviewEntityRef; returnHref: string; onSubmitted?: () => void }) {
-  const { user } = useAuth();
-  const { language, t, pick } = useLanguage();
+  const { user, token } = useAuth();
+  const { t, pick } = useLanguage();
   const { show } = useToast();
   const router = useRouter();
   const config = serviceConfig[entity.type];
@@ -43,22 +43,33 @@ export default function ReviewPageForm({ entity, returnHref, onSubmitted }: { en
     setError('');
     setSubmitting(true);
     try {
-      await submitReview({
-        entityId: entity.id,
-        entityType: entity.type,
-        entityName: entity.name,
-        author: { name: user.name, email: user.email },
-        rating,
-        subRatings,
-        title: language === 'am' ? { en: '', am: title.trim() } : { en: title.trim(), am: '' },
-        text: language === 'am' ? { en: '', am: content.trim() } : { en: content.trim(), am: '' },
-        tripType,
-        visitDate,
-        photos: [],
-      });
+      const tripTypes: Record<TripType, CreateReviewPayload['trip_type']> = {
+        solo: 'Solo',
+        couple: 'Couple',
+        family: 'Family',
+        friends: 'Friends',
+        business: 'Business',
+      };
+      if (entity.type !== 'hotel') {
+        throw new Error('API review subjects are currently available for hotels only.');
+      }
+      const reviewSubjectId = await reviewSubjectsApi.resolveHotel(entity.id, token || undefined);
+      await reviewsApi.create({
+        review_subject: reviewSubjectId,
+        title: title.trim(),
+        content: content.trim(),
+        overall_rating: rating,
+        cleanliness_rating: subRatings.cleanliness ?? rating,
+        service_rating: subRatings.service ?? rating,
+        location_rating: subRatings.location ?? rating,
+        value_rating: subRatings.value ?? rating,
+        trip_type: tripTypes[tripType],
+      }, token || undefined);
       show(t.reviewPendingToast, 'success');
       if (onSubmitted) onSubmitted();
       else await router.push(returnHref);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to submit your review. Please try again.');
     } finally {
       setSubmitting(false);
     }

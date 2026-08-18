@@ -1,29 +1,36 @@
-import { destinations } from '@/data/destinations';
-import { useLanguage } from '@/lib/language';
-import TwoToneHeading from '@/components/ui/TwoToneHeading';
+import { useCallback, useEffect, useState } from 'react';
+import { MapPin } from 'lucide-react';
 import DestinationFeaturedCard from '@/components/home/DestinationFeaturedCard';
 import PageShell from '@/components/layout/PageShell';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
+import Spinner from '@/components/ui/Spinner';
+import TwoToneHeading from '@/components/ui/TwoToneHeading';
+import { citiesApi, type City } from '@/lib/api';
+import { useLanguage } from '@/lib/language';
 
-const featuredLayout = [
-  { slug: 'lalibela', badgeKey: 'badgeTrending' as const, featured: true },
-  { slug: 'addis-ababa', badgeKey: 'badgePopular' as const },
-  { slug: 'bahir-dar', badgeKey: 'badgeNew' as const },
-  { slug: 'gondar', badgeKey: 'badgeHot' as const },
-  { slug: 'hawassa', badgeKey: 'badgeFeatured' as const },
-];
+const badgeKeys = ['badgeTrending', 'badgePopular', 'badgeNew', 'badgeHot', 'badgeFeatured'] as const;
 
 export default function DestinationsRow() {
   const { t } = useLanguage();
+  const [cities, setCities] = useState<City[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const cards = featuredLayout
-    .map((item) => {
-      const destination = destinations.find((d) => d.slug === item.slug);
-      if (!destination) return null;
-      return { ...item, destination };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const loadCities = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await citiesApi.list();
+      setCities(response.filter((city) => city.is_iconic === false));
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to load destinations.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const [hero, ...rest] = cards;
+  useEffect(() => { void loadCities(); }, [loadCities]);
 
   return (
     <section className="bg-white py-10 sm:py-14">
@@ -35,25 +42,29 @@ export default function DestinationsRow() {
           <p className="mx-auto mt-2 max-w-2xl text-sm text-ink-500 sm:text-base">{t.popularDestinationsSubtitle}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 lg:gap-5 lg:min-h-[480px]">
-          {hero && (
-            <DestinationFeaturedCard
-              destination={hero.destination}
-              badge={t[hero.badgeKey]}
-              featured
-              revealIndex={0}
-              className="lg:row-span-2"
-            />
-          )}
-          {rest.map((item, i) => (
-            <DestinationFeaturedCard
-              key={item.slug}
-              destination={item.destination}
-              badge={t[item.badgeKey]}
-              revealIndex={i + 1}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex min-h-72 items-center justify-center"><Spinner /></div>
+        ) : error ? (
+          <ErrorState title="Could not load destinations" subtitle={error} retryLabel="Try again" onRetry={() => void loadCities()} />
+        ) : cities.length === 0 ? (
+          <EmptyState title="No destinations found" subtitle="Cities added to Ethiopidia will appear here." icon={MapPin} />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[230px] lg:gap-5">
+            {cities.map((city, index) => {
+              const featured = index === 0;
+              return (
+                <DestinationFeaturedCard
+                  key={city.id ?? city._id ?? `${city.name_en}-${index}`}
+                  destination={city}
+                  badge={t[badgeKeys[index % badgeKeys.length]]}
+                  featured={featured}
+                  revealIndex={index}
+                  className={featured ? 'lg:row-span-2' : undefined}
+                />
+              );
+            })}
+          </div>
+        )}
       </PageShell>
     </section>
   );

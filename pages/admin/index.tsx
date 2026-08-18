@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
           <div className="grid gap-3 p-5">
             {[
               { href: '/admin/hotels', label: 'Review hotel listings', detail: `${hotels.length} total properties`, icon: BedDouble },
-              { href: '/admin/experiences', label: 'Curate things to do', detail: `${experiences.length} activities`, icon: Compass },
+              { href: '/admin/activities', label: 'Manage activities', detail: 'Create bilingual activity types', icon: Compass },
               { href: '/admin/reviews', label: 'Moderate reviews', detail: `${reviewCount} guest responses`, icon: MessageSquare },
               { href: '/', label: 'Preview public website', detail: 'Open the visitor experience', icon: Eye },
             ].map(({ href, label, detail, icon: Icon }) => (

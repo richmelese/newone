@@ -8,18 +8,23 @@ import {
   ExternalLink,
   Hotel,
   HelpCircle,
+  Images,
   Inbox,
   Landmark,
   LayoutDashboard,
   Map,
   Menu,
   MessageSquare,
+  Newspaper,
   Search,
   Settings,
+  Tags,
   X,
 } from 'lucide-react';
 import Seo from '@/components/layout/Seo';
+import LanguageToggle from '@/components/ui/LanguageToggle';
 import { loadPropertyRequests } from '@/lib/propertyRequests';
+import { useAuth } from '@/lib/auth';
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -32,9 +37,13 @@ type AdminLayoutProps = {
 const navigation = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/destinations', label: 'Destinations', icon: Map },
+  { href: '/admin/categories', label: 'Categories', icon: Tags },
+  { href: '/admin/activities', label: 'Activities', icon: Compass },
+  { href: '/admin/things-to-do', label: 'Things to do', icon: Compass },
   { href: '/admin/hotels', label: 'Properties', icon: Hotel },
   { href: '/admin/requests', label: 'Property requests', icon: Inbox },
-  { href: '/admin/experiences', label: 'Things to do', icon: Compass },
+  { href: '/admin/blogs', label: 'Blogs', icon: Newspaper },
+  { href: '/admin/galleries', label: 'Galleries', icon: Images },
   { href: '/admin/reviews', label: 'Reviews', icon: MessageSquare },
   { href: '/admin/faqs', label: 'FAQ', icon: HelpCircle },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
@@ -42,6 +51,7 @@ const navigation = [
 
 function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
@@ -97,10 +107,12 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
           <ExternalLink size={15} />
         </Link>
         <div className="mt-4 flex items-center gap-3 px-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-100 font-heading text-sm font-extrabold text-accent-700">EA</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-100 font-heading text-sm font-extrabold text-accent-700">
+            {user?.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'A'}
+          </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">Ethiopidia Admin</p>
-            <p className="truncate text-xs text-primary-300">Content manager</p>
+            <p className="truncate text-sm font-bold">{user?.name || 'Administrator'}</p>
+            <button type="button" onClick={() => { signOut(); router.push('/admin/login'); }} className="truncate text-left text-xs text-primary-300 hover:text-white">Sign out</button>
           </div>
         </div>
       </div>
@@ -110,6 +122,25 @@ function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function AdminLayout({ children, title, description, eyebrow = 'Admin workspace', actions }: AdminLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+  const { user, hydrated } = useAuth();
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!user) {
+      router.replace(`/admin/login?next=${encodeURIComponent(router.asPath)}`);
+    } else if (user.role?.toUpperCase() !== 'ADMIN') {
+      router.replace('/admin/login?error=unauthorized');
+    }
+  }, [hydrated, router, user]);
+
+  if (!hydrated || !user || user.role?.toUpperCase() !== 'ADMIN') {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#f4f7fa]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-100 border-t-primary-700" aria-label="Checking administrator access" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-ink-900">
@@ -156,6 +187,7 @@ export default function AdminLayout({ children, title, description, eyebrow = 'A
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <LanguageToggle className="bg-white" />
               <span className="hidden rounded-pill bg-success-500/10 px-3 py-1.5 text-xs font-bold text-success-500 sm:inline-flex">Website live</span>
               <button type="button" className="relative rounded-xl border border-neutral-200 bg-white p-2.5 text-ink-600 transition hover:bg-neutral-100" aria-label="Notifications">
                 <Bell size={19} />

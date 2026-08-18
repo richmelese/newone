@@ -1,5 +1,5 @@
-import { useLanguage } from '@/lib/language';
 import { Languages } from 'lucide-react';
+import { useLanguage } from '@/lib/language';
 
 export default function LanguageToggle({ className }: { className?: string }) {
   const { language, toggleLanguage, t } = useLanguage();

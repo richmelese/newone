@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/lib/language';
 import { useAuth } from '@/lib/auth';
 import { useAuthModal } from '@/lib/authModal';
-import { getReviews } from '@/lib/reviewsService';
+import { getReviewsBySubject } from '@/lib/reviewsService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -60,7 +60,7 @@ export default function ReviewsSection({ entity }: ReviewsSectionProps) {
     setReviews(null);
     setErrored(false);
     try {
-      const data = await getReviews(entity.id, entity.type);
+      const data = await getReviewsBySubject(entity.id, entity.type, entity.name);
       setReviews(data);
     } catch {
       setErrored(true);
