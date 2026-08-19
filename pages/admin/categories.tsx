@@ -39,6 +39,7 @@ export default function AdminCategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
@@ -96,6 +97,7 @@ export default function AdminCategoriesPage() {
 
   function openCreate() {
     setEditing(null);
+    setSlug('');
     setTitle('');
     setDescription('');
     setCity(filterCity);
@@ -105,6 +107,7 @@ export default function AdminCategoriesPage() {
 
   function openEdit(category: Category) {
     setEditing(category);
+    setSlug(category.slug ?? '');
     setTitle(category.title);
     setDescription(category.description);
     setCity(categoryCityId(category));
@@ -121,7 +124,9 @@ export default function AdminCategoriesPage() {
     }
     setSaving(true);
     try {
+      const generatedSlug = slug.trim() || title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       const values = {
+        slug: generatedSlug,
         title: title.trim(),
         description: description.trim(),
         city,
@@ -195,6 +200,7 @@ export default function AdminCategoriesPage() {
       </Panel>
 
       {modalOpen && <AdminEditModal title={editing ? 'Edit category' : 'Create category'} description="Add a category and assign it to a destination city." onClose={() => { if (!saving) { setModalOpen(false); setEditing(null); } }} onSubmit={saveCategory} submitLabel={editing ? 'Save changes' : 'Create category'} submitting={saving} submittingLabel={editing ? 'Saving…' : 'Creating…'}>
+        <label className="text-sm font-bold text-ink-600 sm:col-span-2">Slug<input value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="historic-places" className={adminFieldClass} /></label>
         <label className="text-sm font-bold text-ink-600 sm:col-span-2">Title<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Historic Places" className={adminFieldClass} /></label>
         <label className="text-sm font-bold text-ink-600 sm:col-span-2">Description<textarea required rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Tourist spots in Addis Ababa." className={adminTextAreaClass} /></label>
         <label className="text-sm font-bold text-ink-600 sm:col-span-2">City<select required value={city} onChange={(event) => setCity(event.target.value)} className={adminFieldClass}><option value="">Select a city</option>{cities.map((item) => { const id = recordId(item); return id ? <option key={id} value={id}>{language === 'am' ? item.name_am : item.name_en}</option> : null; })}</select></label>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Sparkles, Compass } from 'lucide-react';
 import { citiesApi, resolveApiAssetUrl, type City, type ThingsToDo } from '@/lib/api';
 import { destinations, getDestination } from '@/data/destinations';
@@ -105,6 +106,18 @@ export default function DestinationDetailPage() {
     ? resolveApiAssetUrl(city.hero_image)
     : localDestination?.heroPhoto ?? '';
 
+  const cityTagline = (city?.tagline && city.tagline !== 'null' && String(city.tagline).trim())
+    ? String(city.tagline).trim()
+    : localDestination?.tagline
+    ? pick(localDestination.tagline)
+    : '';
+
+  const bestTimeToVisit = (city?.best_time_to_visit && city.best_time_to_visit !== 'null' && String(city.best_time_to_visit).trim())
+    ? String(city.best_time_to_visit).trim()
+    : localDestination?.bestTime
+    ? pick(localDestination.bestTime)
+    : '';
+
   const destinationSlug = localDestination?.slug ?? (city ? slugify(city.name_en) : '');
   const hotels = getHotelsByDestination(destinationSlug);
   const experiences = getExperiencesByDestination(destinationSlug);
@@ -155,7 +168,7 @@ export default function DestinationDetailPage() {
           <Reveal>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold uppercase tracking-widest text-accent-300">
-                {localDestination?.region || 'Ethiopia'}
+                {city?.region || localDestination?.region || 'Ethiopia'}
               </span>
               {city?.is_iconic && (
                 <span className="inline-flex items-center gap-1 rounded-pill bg-accent-500/90 px-2.5 py-0.5 text-xs font-bold uppercase text-white shadow-sm">
@@ -164,7 +177,9 @@ export default function DestinationDetailPage() {
               )}
             </div>
             <h1 className="mt-2 font-heading text-3xl font-extrabold sm:text-4xl">{cityName}</h1>
-            <p className="mt-2 max-w-2xl leading-relaxed text-white/90">{cityDescription}</p>
+            {cityTagline ? (
+              <p className="mt-1 text-sm font-semibold text-accent-200">{cityTagline}</p>
+            ) : null}
           </Reveal>
         </PageShell>
       </section>
@@ -186,11 +201,11 @@ export default function DestinationDetailPage() {
             <div className="max-w-3xl rounded-card-lg border border-neutral-200 bg-white p-6 shadow-card">
               <h2 className="font-heading text-xl font-bold text-ink-900">About {cityName}</h2>
               <p className="mt-3 whitespace-pre-line leading-relaxed text-ink-600">{cityDescription}</p>
-              {localDestination && (
+              {bestTimeToVisit ? (
                 <p className="mt-4 text-sm font-semibold text-primary-700">
-                  {t.bestTimeToVisit}: {pick(localDestination.bestTime)}
+                  {t.bestTimeToVisit}: {bestTimeToVisit}
                 </p>
-              )}
+              ) : null}
             </div>
           )}
         </Reveal>
@@ -246,10 +261,12 @@ export default function DestinationDetailPage() {
                 const itemTitle = language === 'am' ? item.name_am : item.name_en;
                 const itemDesc = language === 'am' ? item.description_am : item.description_en;
                 const itemPhoto = resolveApiAssetUrl(item.hero_image);
+                const itemId = item._id ?? item.id ?? item.slug;
                 return (
-                  <div
-                    key={item._id ?? item.id ?? index}
-                    className="group overflow-hidden rounded-card-lg border border-neutral-200 bg-white shadow-card transition hover:-translate-y-1 hover:shadow-lift"
+                  <Link
+                    key={itemId ?? index}
+                    href={`/things-to-do/${encodeURIComponent(String(itemId))}`}
+                    className="group block overflow-hidden rounded-card-lg border border-neutral-200 bg-white shadow-card transition hover:-translate-y-1 hover:shadow-lift"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
                       {itemPhoto ? (
@@ -274,7 +291,7 @@ export default function DestinationDetailPage() {
                     <div className="p-4">
                       <p className="line-clamp-3 text-sm text-ink-600">{itemDesc}</p>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { ArrowLeft, Check, Mail, MapPin, Phone, X } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Panel, PanelHeader, StatusPill, TableEmpty } from '@/components/admin/AdminUi';
+import { propertyListingRequestsApi } from '@/lib/api';
 import { loadPropertyRequests, updatePropertyRequestStatus } from '@/lib/propertyRequests';
 import type { PropertyRequest, PropertyRequestStatus } from '@/types';
 
@@ -47,14 +48,87 @@ const backAction = (
   </Link>
 );
 
+function normalizeApiRequest(item: Record<string, unknown>, index: number): PropertyRequest {
+  const id = String(item._id || item.id || `req-api-${index}`);
+  const contactName = String(item.owner_name || item.contactName || item.business_name || 'Anonymous');
+  const role = String(item.owner_role || item.role || 'Owner');
+  const email = String(item.email || '');
+  const phone = String(item.phone || '');
+  const propertyName = String(item.property_name || item.business_name || item.propertyName || 'Untitled Property');
+  const propertyType = String(item.property_type || item.propertyType || 'Hotel');
+  
+  let cityStr = 'Not specified';
+  if (typeof item.city === 'object' && item.city !== null) {
+    const cityObj = item.city as { name_en?: string; name_am?: string };
+    cityStr = cityObj.name_en || cityObj.name_am || 'Not specified';
+  } else if (item.city) {
+    cityStr = String(item.city);
+  } else if (item.location) {
+    cityStr = String(item.location);
+  }
+
+  const address = String(item.address || item.location || '');
+  const submittedAt = String(item.created_at || item.submittedAt || new Date().toISOString());
+  const statusStr = String(item.status || 'pending').toLowerCase();
+  const status: PropertyRequestStatus = statusStr === 'approved' ? 'approved' : statusStr === 'rejected' ? 'rejected' : 'pending';
+
+  const photos = Array.isArray(item.photos) ? item.photos : [];
+
+  return {
+    id,
+    contactName,
+    role,
+    email,
+    phone,
+    propertyName,
+    propertyType,
+    starClass: String(item.starClass || ''),
+    rooms: String(item.rooms || ''),
+    city: cityStr,
+    address,
+    services: Array.isArray(item.services) ? item.services.map(String) : [],
+    amenities: Array.isArray(item.amenities) ? item.amenities.map(String) : [],
+    notes: String(item.notes || ''),
+    mediaCount: photos.length || (typeof item.mediaCount === 'number' ? item.mediaCount : 0),
+    submittedAt,
+    status,
+  };
+}
+
 export default function RequestDetailPage() {
   const router = useRouter();
   const [request, setRequest] = useState<PropertyRequest | null | undefined>(undefined);
 
   useEffect(() => {
     if (typeof router.query.id !== 'string') return;
-    const found = loadPropertyRequests().find((item) => item.id === router.query.id);
-    setRequest(found ?? null);
+    const reqId = router.query.id;
+
+    let isMounted = true;
+
+    async function loadDetail() {
+      try {
+        const rawRes = await propertyListingRequestsApi.getById(reqId);
+        if (!isMounted) return;
+        if (rawRes && typeof rawRes === 'object') {
+          setRequest(normalizeApiRequest(rawRes as Record<string, unknown>, 0));
+          return;
+        }
+      } catch {
+        // Fallback: check local storage
+        const foundLocal = loadPropertyRequests().find((item) => item.id === reqId);
+        if (isMounted) {
+          setRequest(foundLocal ?? null);
+        }
+        return;
+      }
+      if (isMounted) setRequest(null);
+    }
+
+    void loadDetail();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router.query.id]);
 
   function setStatus(status: PropertyRequestStatus) {

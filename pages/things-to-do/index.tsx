@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Compass, ImageIcon, MapPin, Search, Sparkles, Tag, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Compass, ImageIcon, MapPin, Search } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import PageHero from '@/components/layout/PageHero';
 import PageShell from '@/components/layout/PageShell';
@@ -18,11 +19,8 @@ function recordId(record?: { id?: string | number; _id?: string } | null) {
   return id === undefined ? '' : String(id);
 }
 
-function activityKey(activity: Activity) {
-  return recordId(activity) || activity.slug || activity.name_en;
-}
-
 export default function ThingsToDoIndexPage() {
+  const router = useRouter();
   const { language, t } = useLanguage();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [thingsToDo, setThingsToDo] = useState<ThingsToDo[]>([]);
@@ -30,6 +28,16 @@ export default function ThingsToDoIndexPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Sync selected activity with URL query param if present
+  useEffect(() => {
+    if (router.isReady) {
+      const qAct = typeof router.query.activity === 'string' ? router.query.activity : typeof router.query.id === 'string' ? router.query.id : '';
+      if (qAct) {
+        setSelectedActivityId(qAct);
+      }
+    }
+  }, [router.isReady, router.query.activity, router.query.id]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -52,46 +60,34 @@ export default function ThingsToDoIndexPage() {
     void loadData();
   }, [loadData]);
 
-  // Count things to do per activity
-  const countsByActivity = useMemo(() => {
-    const map = new Map<string, number>();
-    thingsToDo.forEach((item) => {
-      let actId = '';
-      if (typeof item.activity === 'string') {
-        actId = item.activity;
-      } else if (item.activity && typeof item.activity === 'object') {
-        actId = recordId(item.activity) || (item.activity as Activity).slug || '';
-      }
-      if (actId) {
-        map.set(actId, (map.get(actId) ?? 0) + 1);
-      }
-    });
-    return map;
-  }, [thingsToDo]);
-
   // Filtered things to do items
   const filteredThings = useMemo(() => {
     return thingsToDo.filter((item) => {
-      // Activity filter
       if (selectedActivityId !== 'all') {
         let itemActId = '';
+        let itemActUnderscoreId = '';
         let itemActSlug = '';
+        let itemActName = '';
         if (typeof item.activity === 'string') {
           itemActId = item.activity;
         } else if (item.activity && typeof item.activity === 'object') {
-          itemActId = recordId(item.activity);
-          itemActSlug = (item.activity as Activity).slug || '';
+          const actObj = item.activity as Activity & { _id?: string };
+          itemActId = recordId(actObj);
+          itemActUnderscoreId = actObj._id || '';
+          itemActSlug = actObj.slug || '';
+          itemActName = (actObj.name_en || '').toLowerCase();
         }
 
+        const q = selectedActivityId.toLowerCase();
         const matchesActivity =
           itemActId === selectedActivityId ||
-          itemActSlug === selectedActivityId ||
-          (item.activity && typeof item.activity === 'object' && (item.activity as Activity).name_en === selectedActivityId);
+          (itemActUnderscoreId && itemActUnderscoreId === selectedActivityId) ||
+          (itemActSlug && itemActSlug === selectedActivityId) ||
+          (itemActName && itemActName === q);
 
         if (!matchesActivity) return false;
       }
 
-      // Keyword search
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         const nameEn = (item.name_en || '').toLowerCase();
@@ -120,133 +116,84 @@ export default function ThingsToDoIndexPage() {
         subtitle={language === 'am' ? 'ታሪካዊ ቦታዎች፣ ተፈጥሮ፣ ባህላዊ ጉዞዎች እና የማይረሱ ልምዶች' : 'Discover top activities, cultural attractions, nature escapes, and hidden gems.'}
       />
 
-      <PageShell className="py-8 sm:py-12">
+      <PageShell className="py-6 sm:py-10">
         <Breadcrumbs
           items={[
             { label: t.breadcrumbHome, href: '/' },
-            { label: language === 'am' ? 'መዝናኛዎች' : 'Things to do' },
+            { label: 'Things to do' },
           ]}
         />
 
-        {/* Search & Header */}
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Heading Title with split color */}
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="font-heading text-2xl font-extrabold text-primary-900 sm:text-3xl">
-              {language === 'am' ? 'ሁሉንም መዝናኛዎች ያስሱ' : 'Explore Activities & Things to Do'}
+            <h1 className="font-heading text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+              Addis <span className="text-orange-500">Ababa</span>
             </h1>
-            <p className="mt-1 text-sm text-ink-500">
-              {language === 'am'
-                ? `${filteredThings.length} የተገኙ ተግባራት`
-                : `Showing ${filteredThings.length} experiences across Ethiopia`}
-            </p>
           </div>
 
           <div className="relative w-full sm:max-w-xs">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={language === 'am' ? 'መዝናኛ ፈልግ...' : 'Search things to do...'}
-              className="h-11 w-full rounded-pill border border-neutral-200 bg-white pl-10 pr-4 text-sm font-medium text-ink-800 shadow-sm outline-none transition focus:border-primary-400 focus:ring-4 focus:ring-primary-50"
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-5 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-50"
             />
           </div>
         </div>
 
-        {/* Featured Activities from /activities?page=1&limit=10 */}
+        {/* Activity Categories Grid matching Image 1 */}
         {activities.length > 0 && (
           <section className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-accent-500" />
-                <h2 className="font-heading text-lg font-bold text-ink-900 sm:text-xl">
-                  {language === 'am' ? 'ዋና ዋና የመዝናኛ አይነቶች' : 'Featured Activity Categories'}
-                </h2>
-              </div>
-              {selectedActivityId !== 'all' && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedActivityId('all')}
-                  className="text-xs font-bold text-primary-700 hover:underline"
-                >
-                  {language === 'am' ? 'ሁሉንም አሳይ' : 'Clear filter'}
-                </button>
-              )}
-            </div>
-
-            {/* Activities Horizontal Cards / Chips */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-              <button
-                type="button"
-                onClick={() => setSelectedActivityId('all')}
-                className={`flex flex-col items-center justify-center rounded-2xl border p-4 text-center transition ${
-                  selectedActivityId === 'all'
-                    ? 'border-primary-700 bg-primary-900 text-white shadow-lift'
-                    : 'border-neutral-200 bg-white text-ink-800 hover:border-primary-300 hover:bg-neutral-50'
-                }`}
-              >
-                <span className={`flex h-12 w-12 items-center justify-center rounded-full ${selectedActivityId === 'all' ? 'bg-white/20 text-white' : 'bg-primary-50 text-primary-700'}`}>
-                  <Compass size={24} />
-                </span>
-                <span className="mt-2.5 font-heading text-sm font-extrabold">
-                  {language === 'am' ? 'ሁሉም' : 'All Activities'}
-                </span>
-                <span className={`mt-0.5 text-xs ${selectedActivityId === 'all' ? 'text-white/70' : 'text-ink-400'}`}>
-                  {thingsToDo.length} {language === 'am' ? 'ቦታዎች' : 'items'}
-                </span>
-              </button>
-
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {activities.map((activity) => {
-                const actId = recordId(activity) || activity.slug || activity.name_en;
-                const isSelected = selectedActivityId === actId || selectedActivityId === activity.slug || selectedActivityId === recordId(activity);
+                const actId = recordId(activity) || (activity as { _id?: string })._id || activity.slug || activity.name_en;
+                const isSelected =
+                  selectedActivityId === actId ||
+                  selectedActivityId === (activity as { _id?: string })._id ||
+                  selectedActivityId === activity.slug ||
+                  selectedActivityId === activity.name_en;
+
                 const image = resolveApiAssetUrl(activity.image || activity.hero_image || activity.image_url || activity.cover_image);
                 const title = language === 'am' ? activity.name_am : activity.name_en;
-                const count = countsByActivity.get(recordId(activity)) || (activity.slug ? countsByActivity.get(activity.slug) : 0) || 0;
 
                 return (
-                  <button
+                  <Link
                     key={actId}
-                    type="button"
-                    onClick={() => setSelectedActivityId(isSelected ? 'all' : actId)}
-                    className={`group relative overflow-hidden rounded-2xl border text-left transition ${
-                      isSelected
-                        ? 'border-primary-700 ring-2 ring-primary-700 shadow-lift'
-                        : 'border-neutral-200 bg-white hover:border-primary-300 hover:shadow-card'
+                    href={`/activities/${encodeURIComponent(actId)}`}
+                    className={`group relative overflow-hidden rounded-[28px] border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                      isSelected ? 'border-orange-500 ring-2 ring-orange-500' : 'border-slate-100 hover:border-slate-200'
                     }`}
                   >
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-100">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
                       {image ? (
                         <img
                           src={image}
                           alt={title}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-primary-50 text-primary-600">
-                          <Compass size={28} />
+                        <div className="flex h-full w-full items-center justify-center bg-orange-50 text-orange-500">
+                          <Compass size={48} />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-3 text-white">
-                        <p className="font-heading text-sm font-extrabold leading-tight drop-shadow-sm">{title}</p>
-                        {activity.name_am && language !== 'am' && (
-                          <p className="text-[11px] text-white/80 drop-shadow-sm" lang="am">{activity.name_am}</p>
-                        )}
-                      </div>
                     </div>
-                    <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-ink-500">
-                      <span>{count > 0 ? `${count} ${language === 'am' ? 'ተግባራት' : 'items'}` : (activity.slug ? `/${activity.slug}` : 'Activity')}</span>
-                      <ArrowRight size={13} className="text-primary-700 transition group-hover:translate-x-0.5" />
+                    <div className="p-6">
+                      <h3 className="font-heading text-xl font-bold text-slate-900 transition-colors group-hover:text-orange-500">
+                        {title}
+                      </h3>
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
           </section>
         )}
 
-        {/* Content Section */}
+        {/* Things To Do List */}
         {loading ? (
           <div className="flex min-h-[40vh] items-center justify-center">
             <Spinner />
@@ -269,7 +216,22 @@ export default function ThingsToDoIndexPage() {
             />
           </div>
         ) : (
-          <div className="mt-10">
+          <div className="mt-12">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="font-heading text-2xl font-bold text-slate-900">
+                {language === 'am' ? 'ተግባራት እና ቦታዎች' : 'Experiences & Places'}
+              </h2>
+              {selectedActivityId !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedActivityId('all')}
+                  className="text-sm font-bold text-orange-600 hover:underline"
+                >
+                  {language === 'am' ? 'ሁሉንም አሳይ' : 'Clear filter'}
+                </button>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredThings.map((item, index) => {
                 const id = recordId(item);
@@ -289,9 +251,9 @@ export default function ThingsToDoIndexPage() {
                   <Link
                     key={id || `${item.slug}-${index}`}
                     href={`/things-to-do/${encodeURIComponent(item.slug || id)}`}
-                    className="group overflow-hidden rounded-card-lg border border-neutral-200/80 bg-white shadow-soft transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-lift"
+                    className="group overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-200 hover:shadow-xl"
                   >
-                    <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
                       {image ? (
                         <Image
                           src={image}
@@ -299,31 +261,31 @@ export default function ThingsToDoIndexPage() {
                           fill
                           unoptimized
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          className="object-cover transition duration-500 group-hover:scale-105"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-ink-300">
+                        <div className="flex h-full items-center justify-center text-slate-300">
                           <ImageIcon size={42} />
                         </div>
                       )}
                       {activityName && (
-                        <span className="absolute left-3 top-3 rounded-pill bg-white/95 px-3 py-1 text-xs font-bold text-primary-900 shadow-sm backdrop-blur-sm">
+                        <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3.5 py-1 text-xs font-bold text-slate-900 shadow-sm backdrop-blur-sm">
                           {activityName}
                         </span>
                       )}
                     </div>
-                    <div className="p-5">
+                    <div className="p-6">
                       {cityName && (
-                        <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-primary-700">
-                          <MapPin size={13} />
+                        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-600">
+                          <MapPin size={14} />
                           {cityName}
                         </p>
                       )}
-                      <h3 className="mt-1.5 font-heading text-lg font-extrabold text-ink-900 transition group-hover:text-primary-800">
+                      <h3 className="mt-2 font-heading text-xl font-bold text-slate-900 transition-colors group-hover:text-orange-500">
                         {name}
                       </h3>
                       {description && (
-                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-500">
+                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-500">
                           {description}
                         </p>
                       )}
