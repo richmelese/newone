@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/lib/language';
 import { submitPropertyRequest } from '@/lib/propertyRequests';
+import { citiesApi, propertyListingRequestsApi, type City } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 import PageShell from '@/components/layout/PageShell';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
@@ -39,7 +40,7 @@ const amenities = [
   'Conference / events',
 ];
 
-const cities = [
+const staticCities = [
   'Addis Ababa',
   'Bahir Dar',
   'Gondar',
@@ -77,35 +78,77 @@ function ChipGroup({ name, options }: { name: string; options: string[] }) {
 export default function GetStartedPage() {
   const { t } = useLanguage();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [propertyName, setPropertyName] = useState('your property');
+  const [apiCities, setApiCities] = useState<City[]>([]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    citiesApi.list()
+      .then(setApiCities)
+      .catch((err) => console.warn('Could not fetch cities list:', err));
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
 
-    const formData = new FormData(form);
-    const submittedProperty = formData.get('propertyName')?.toString().trim();
-    setPropertyName(submittedProperty || 'your property');
+    setSubmitting(true);
 
+    const formData = new FormData(form);
+    const submittedProperty = formData.get('propertyName')?.toString().trim() || 'Untitled property';
+    setPropertyName(submittedProperty);
+
+    const ownerName = String(formData.get('name') ?? '').trim();
+    const ownerRole = String(formData.get('role') ?? '').trim() || 'owner';
+    const email = String(formData.get('email') ?? '').trim();
+    const phone = String(formData.get('phone') ?? '').trim();
+    const propType = String(formData.get('type') ?? '').trim() || 'hotel';
+    const address = String(formData.get('address') ?? '').trim();
+    const city = String(formData.get('city') ?? '').trim();
+    const location = address || city || 'Addis Ababa';
+    const mediaFiles = formData.getAll('media').filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+    try {
+      // Send POST request to /property-listing-requests endpoint
+      await propertyListingRequestsApi.create({
+        owner_name: ownerName,
+        owner_role: ownerRole,
+        business_name: submittedProperty,
+        email: email,
+        phone: phone,
+        property_name: submittedProperty,
+        property_type: propType,
+        address: address,
+        city: city,
+        location: location,
+        hasAgreed: true,
+        photos: mediaFiles.length > 0 ? mediaFiles : null,
+      });
+    } catch (err) {
+      console.warn('Backend API request notice:', err);
+    }
+
+    // Save to local storage fallback
     submitPropertyRequest({
-      contactName: String(formData.get('name') ?? '').trim(),
-      role: String(formData.get('role') ?? ''),
-      email: String(formData.get('email') ?? '').trim(),
-      phone: String(formData.get('phone') ?? '').trim(),
-      propertyName: submittedProperty || 'Untitled property',
-      propertyType: String(formData.get('type') ?? ''),
+      contactName: ownerName,
+      role: ownerRole,
+      email: email,
+      phone: phone,
+      propertyName: submittedProperty,
+      propertyType: propType,
       starClass: String(formData.get('stars') ?? ''),
       rooms: String(formData.get('rooms') ?? ''),
-      city: String(formData.get('city') ?? ''),
-      address: String(formData.get('address') ?? '').trim(),
+      city: city,
+      address: address,
       services: formData.getAll('services').map(String),
       amenities: formData.getAll('amenities').map(String),
       notes: String(formData.get('notes') ?? '').trim(),
-      mediaCount: formData.getAll('media').filter((entry) => entry instanceof File && entry.size > 0).length,
+      mediaCount: mediaFiles.length,
     });
 
+    setSubmitting(false);
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -293,9 +336,18 @@ export default function GetStartedPage() {
                       </label>
                       <select id="city" name="city" required className={inputClasses} defaultValue="">
                         <option value="">Select...</option>
-                        {cities.map((city) => (
-                          <option key={city}>{city}</option>
-                        ))}
+                        {apiCities.length > 0
+                          ? apiCities.map((city) => {
+                              const val = city._id || city.id || city.name_en;
+                              return (
+                                <option key={val} value={val}>
+                                  {city.name_en} ({city.name_am})
+                                </option>
+                              );
+                            })
+                          : staticCities.map((city) => (
+                              <option key={city} value={city}>{city}</option>
+                            ))}
                       </select>
                     </div>
                     <div>
@@ -351,8 +403,8 @@ export default function GetStartedPage() {
                 </section>
 
                 <div className="flex flex-wrap items-center gap-4 pt-6">
-                  <Button type="submit" size="lg">
-                    Send request
+                  <Button type="submit" size="lg" disabled={submitting}>
+                    {submitting ? 'Sending request...' : 'Send request'}
                   </Button>
                   <span className="text-sm text-ink-500">Takes about 2 minutes - No payment required</span>
                 </div>

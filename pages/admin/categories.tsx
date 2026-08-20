@@ -44,6 +44,7 @@ export default function AdminCategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
   const [slug, setSlug] = useState('');
+  const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
@@ -102,6 +103,7 @@ export default function AdminCategoriesPage() {
   function openCreate() {
     setEditing(null);
     setSlug('');
+    setSlug('');
     setTitle('');
     setDescription('');
     setCity(filterCity);
@@ -133,6 +135,7 @@ export default function AdminCategoriesPage() {
     }
     setSaving(true);
     try {
+      const generatedSlug = slug.trim() || title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       const values = {
         slug: finalSlug,
         title: title.trim(),

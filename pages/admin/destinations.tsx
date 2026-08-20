@@ -14,7 +14,11 @@ import { useLanguage } from '@/lib/language';
 import { slugify } from '@/lib/format';
 
 const PAGE_SIZE = 6;
-type CityForm = Omit<CreateCityPayload, 'hero_image'> & { hero_image: File | null };
+type CityForm = Omit<CreateCityPayload, 'hero_image'> & {
+  hero_image: File | null;
+  tagline: string;
+  best_time_to_visit: string;
+};
 
 const EMPTY_FORM: CityForm = {
   slug: '',
@@ -23,6 +27,8 @@ const EMPTY_FORM: CityForm = {
   description_en: '',
   description_am: '',
   region: '',
+  tagline: '',
+  best_time_to_visit: '',
   hero_image: null,
   is_iconic: false,
 };
@@ -111,6 +117,8 @@ export default function AdminDestinationsPage() {
       description_en: city.description_en,
       description_am: city.description_am,
       region: city.region || '',
+      tagline: city.tagline || '',
+      best_time_to_visit: city.best_time_to_visit || '',
       hero_image: null,
       is_iconic: city.is_iconic,
     });
@@ -129,6 +137,8 @@ export default function AdminDestinationsPage() {
         description_en: form.description_en.trim(),
         description_am: form.description_am.trim(),
         region: form.region.trim(),
+        tagline: form.tagline.trim() || null,
+        best_time_to_visit: form.best_time_to_visit.trim() || null,
         is_iconic: form.is_iconic,
       };
       const editingId = editingCity?.id ?? editingCity?._id;
@@ -261,6 +271,8 @@ export default function AdminDestinationsPage() {
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">English description<textarea required rows={3} value={form.description_en} onChange={(event) => updateField('description_en', event.target.value)} placeholder="Capital city of Ethiopia" className={adminTextAreaClass} /></label>
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">Amharic description<textarea required lang="am" rows={3} value={form.description_am} onChange={(event) => updateField('description_am', event.target.value)} placeholder="የኢትዮጵያ ዋና ከተማ" className={adminTextAreaClass} /></label>
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">Region<input required value={form.region} onChange={(event) => updateField('region', event.target.value)} placeholder="Addis Ababa" className={adminFieldClass} /></label>
+          <label className="text-sm font-bold text-ink-600 sm:col-span-2">Tagline (optional)<input value={form.tagline} onChange={(event) => updateField('tagline', event.target.value)} placeholder="Rift Valley lake views and fresh fish markets" className={adminFieldClass} /></label>
+          <label className="text-sm font-bold text-ink-600 sm:col-span-2">Best time to visit (optional)<input value={form.best_time_to_visit} onChange={(event) => updateField('best_time_to_visit', event.target.value)} placeholder="October to April (Dry season)" className={adminFieldClass} /></label>
           <div className="sm:col-span-2">
             <label className="text-sm font-bold text-ink-600">Hero image{editingCity ? ' (leave empty to keep the current image)' : ''}<input required={!editingCity} type="file" accept="image/*" onChange={(event) => updateField('hero_image', event.target.files?.[0] ?? null)} className={`${adminFieldClass} py-2`} /></label>
             {heroPreview && (

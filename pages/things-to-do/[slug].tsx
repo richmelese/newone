@@ -27,6 +27,7 @@ export default function ActivityCategoryDetailPage() {
   const slugOrId = typeof router.query.slug === 'string' ? router.query.slug : '';
 
   const loadData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!slugOrId) return;
     setLoading(true);
     setError('');
@@ -145,7 +146,9 @@ export default function ActivityCategoryDetailPage() {
   useEffect(() => {
     if (router.isReady && slugOrId) {
       void loadData();
+      void loadData();
     }
+  }, [router.isReady, slugOrId, loadData]);
   }, [router.isReady, slugOrId, loadData]);
 
   if (!router.isReady || loading) {

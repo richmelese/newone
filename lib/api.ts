@@ -113,6 +113,7 @@ export type Category = {
   id?: string | number;
   _id?: string;
   slug?: string;
+  slug?: string;
   title: string;
   description: string;
   hero_image: string;
@@ -150,6 +151,8 @@ export type City = {
   region: string;
   hero_image: string;
   is_iconic: boolean;
+  tagline?: string | null;
+  best_time_to_visit?: string | null;
   status?: string;
   created_at?: string;
   updated_at?: string;
@@ -179,6 +182,7 @@ export type Activity = {
   hero_image?: string | null;
   image_url?: string | null;
   cover_image?: string | null;
+  things_to_do?: ThingsToDo[];
   things_to_do?: ThingsToDo[];
   created_at?: string;
   updated_at?: string;
@@ -212,6 +216,7 @@ export type ThingsToDo = {
   hero_image: string;
   activity: string | Activity;
   city: string | City;
+  gallery?: Array<string | { url?: string; path?: string }>;
   created_at?: string;
   updated_at?: string;
 };
@@ -422,6 +427,8 @@ function cityFormData(payload: CreateCityPayload | UpdateCityPayload) {
   body.append('description_en', payload.description_en);
   body.append('description_am', payload.description_am);
   body.append('region', payload.region);
+  if (payload.tagline !== undefined && payload.tagline !== null) body.append('tagline', payload.tagline);
+  if (payload.best_time_to_visit !== undefined && payload.best_time_to_visit !== null) body.append('best_time_to_visit', payload.best_time_to_visit);
   if (payload.hero_image) body.append('hero_image', payload.hero_image);
   body.append('is_iconic', String(payload.is_iconic));
   return body;
@@ -546,6 +553,7 @@ export const categoriesApi = {
 function categoryFormData(payload: CreateCategoryPayload | UpdateCategoryPayload) {
   const body = new FormData();
   if (payload.slug) body.append('slug', payload.slug);
+  if (payload.slug) body.append('slug', payload.slug);
   body.append('title', payload.title);
   body.append('description', payload.description);
   if (payload.hero_image) body.append('hero_image', payload.hero_image);
@@ -662,6 +670,15 @@ function unwrapThingsToDo(response: ThingsToDoResponse, action: string) {
   if (!item) throw new ApiError(`The thing to do was ${action}, but the API returned an invalid response.`, 500);
   return item;
 }
+
+export type ThingsToDoListParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  activity?: string;
+  city?: string;
+  token?: string;
+};
 
 export const thingsToDoApi = {
   async list(token?: string) {
@@ -949,3 +966,93 @@ export const reviewSubjectsApi = {
     return String(id);
   },
 };
+
+export type CreatePropertyListingRequestPayload = {
+  owner_name: string;
+  owner_role?: string;
+  business_name?: string;
+  email?: string;
+  phone: string;
+  property_name: string;
+  property_type: string;
+  address?: string;
+  city?: string;
+  location?: string;
+  hasAgreed?: boolean | string;
+  photos?: File[] | FileList | File | null;
+};
+
+function propertyListingRequestFormData(payload: CreatePropertyListingRequestPayload) {
+  const body = new FormData();
+  body.append('owner_name', payload.owner_name);
+  if (payload.owner_role) body.append('owner_role', payload.owner_role);
+  if (payload.business_name) body.append('business_name', payload.business_name);
+  if (payload.email) body.append('email', payload.email);
+  body.append('phone', payload.phone);
+  body.append('property_name', payload.property_name);
+  body.append('property_type', payload.property_type);
+  if (payload.address) body.append('address', payload.address);
+  if (payload.city) body.append('city', payload.city);
+  if (payload.location) body.append('location', payload.location);
+  body.append('hasAgreed', String(payload.hasAgreed ?? true));
+
+  if (payload.photos) {
+    if (payload.photos instanceof File) {
+      body.append('photos', payload.photos);
+    } else if (Array.isArray(payload.photos)) {
+      payload.photos.forEach((file) => {
+        if (file instanceof File) body.append('photos', file);
+      });
+    } else if (typeof FileList !== 'undefined' && payload.photos instanceof FileList) {
+      Array.from(payload.photos).forEach((file) => {
+        if (file instanceof File) body.append('photos', file);
+      });
+    }
+  }
+  return body;
+}
+
+export const propertyListingRequestsApi = {
+  async create(payload: CreatePropertyListingRequestPayload, token?: string) {
+    return request<unknown>('/property-listing-requests', {
+      method: 'POST',
+      headers: authorizationHeader(token),
+      body: propertyListingRequestFormData(payload),
+    });
+  },
+  async list(token?: string) {
+    const response = await request<unknown>('/property-listing-requests', {
+      method: 'GET',
+      headers: authorizationHeader(token),
+    });
+    if (Array.isArray(response)) return response;
+    if (response && typeof response === 'object' && 'data' in response && Array.isArray((response as { data: unknown[] }).data)) {
+      return (response as { data: unknown[] }).data;
+    }
+    return response;
+  },
+  async getById(id: string | number, token?: string) {
+    try {
+      const response = await request<unknown>(`/property-listing-requests/${encodeURIComponent(String(id))}`, {
+        method: 'GET',
+        headers: authorizationHeader(token),
+      });
+      if (response && typeof response === 'object' && 'data' in response && (response as { data?: unknown }).data) {
+        return (response as { data: unknown }).data;
+      }
+      return response;
+    } catch {
+      // Fallback: search in list by ID
+      const all = await propertyListingRequestsApi.list(token);
+      if (Array.isArray(all)) {
+        const found = (all as Record<string, unknown>[]).find(
+          (item) => String(item.id ?? item._id) === String(id)
+        );
+        if (found) return found;
+      }
+      throw new ApiError('Property listing request not found.', 404);
+    }
+  },
+};
+
+
