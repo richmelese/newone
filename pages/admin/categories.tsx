@@ -44,7 +44,6 @@ export default function AdminCategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
   const [slug, setSlug] = useState('');
-  const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
@@ -102,7 +101,6 @@ export default function AdminCategoriesPage() {
 
   function openCreate() {
     setEditing(null);
-    setSlug('');
     setSlug('');
     setTitle('');
     setDescription('');

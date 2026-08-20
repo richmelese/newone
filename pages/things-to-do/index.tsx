@@ -96,7 +96,6 @@ function getActivityImage(activity: Activity, index: number) {
 
 export default function ThingsToDoIndexPage() {
   const router = useRouter();
-  const router = useRouter();
   const { language, t } = useLanguage();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');

@@ -113,7 +113,6 @@ export type Category = {
   id?: string | number;
   _id?: string;
   slug?: string;
-  slug?: string;
   title: string;
   description: string;
   hero_image: string;
@@ -182,7 +181,6 @@ export type Activity = {
   hero_image?: string | null;
   image_url?: string | null;
   cover_image?: string | null;
-  things_to_do?: ThingsToDo[];
   things_to_do?: ThingsToDo[];
   created_at?: string;
   updated_at?: string;
@@ -552,7 +550,6 @@ export const categoriesApi = {
 
 function categoryFormData(payload: CreateCategoryPayload | UpdateCategoryPayload) {
   const body = new FormData();
-  if (payload.slug) body.append('slug', payload.slug);
   if (payload.slug) body.append('slug', payload.slug);
   body.append('title', payload.title);
   body.append('description', payload.description);
