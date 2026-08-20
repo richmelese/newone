@@ -112,6 +112,7 @@ export type CityCategory = {
 export type Category = {
   id?: string | number;
   _id?: string;
+  slug?: string;
   title: string;
   description: string;
   hero_image: string;
@@ -122,12 +123,18 @@ export type Category = {
   [key: string]: unknown;
 };
 
-export type CreateCategoryPayload = Pick<Category, 'title' | 'description'> & {
+export type CreateCategoryPayload = {
+  slug: string;
+  title: string;
+  description: string;
   city: string;
   hero_image: File;
 };
 
-export type UpdateCategoryPayload = Pick<Category, 'title' | 'description'> & {
+export type UpdateCategoryPayload = {
+  slug?: string;
+  title: string;
+  description: string;
   city: string;
   hero_image?: File;
 };
@@ -135,6 +142,7 @@ export type UpdateCategoryPayload = Pick<Category, 'title' | 'description'> & {
 export type City = {
   id?: string | number;
   _id?: string;
+  slug?: string;
   name_en: string;
   name_am: string;
   description_en: string;
@@ -154,7 +162,9 @@ export type City = {
 type CityTextPayload = Pick<
   City,
   'name_en' | 'name_am' | 'description_en' | 'description_am' | 'region' | 'is_iconic'
->;
+> & {
+  slug?: string;
+};
 
 export type CreateCityPayload = CityTextPayload & { hero_image: File };
 export type UpdateCityPayload = CityTextPayload & { hero_image?: File };
@@ -169,6 +179,7 @@ export type Activity = {
   hero_image?: string | null;
   image_url?: string | null;
   cover_image?: string | null;
+  things_to_do?: ThingsToDo[];
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
@@ -405,6 +416,7 @@ function authorizationHeader(token?: string) {
 
 function cityFormData(payload: CreateCityPayload | UpdateCityPayload) {
   const body = new FormData();
+  if (payload.slug) body.append('slug', payload.slug);
   body.append('name_en', payload.name_en);
   body.append('name_am', payload.name_am);
   body.append('description_en', payload.description_en);
@@ -426,15 +438,37 @@ export const citiesApi = {
     return response.data ?? response.cities ?? response.items ?? [];
   },
   async getById(id: string | number, token?: string) {
-    const response = await request<CityResponse>(`/cities/${encodeURIComponent(String(id))}`, {
-      method: 'GET',
-      headers: authorizationHeader(token),
-    });
+    try {
+      const response = await request<CityResponse>(`/cities/${encodeURIComponent(String(id))}`, {
+        method: 'GET',
+        headers: authorizationHeader(token),
+      });
 
-    if ('name_en' in response) return response;
-    const city = response.data ?? response.city;
-    if (!city) throw new ApiError('The API returned an invalid city response.', 500);
-    return city;
+      if ('name_en' in response) return response;
+      const city = response.data ?? response.city;
+      if (city) return city;
+    } catch {
+      // If fetching directly by ID failed (or if given a slug), find in list
+      const all = await this.list(token);
+      const query = String(id).toLowerCase().trim();
+      const matched = all.find(
+        (c) =>
+          c._id === id ||
+          String(c.id) === id ||
+          (c.slug && c.slug.toLowerCase() === query) ||
+          c.name_en.toLowerCase() === query ||
+          (c.slug && c.slug.toLowerCase().includes(query)) ||
+          c.name_en.toLowerCase().includes(query),
+      );
+      if (matched) {
+        const realId = matched._id ?? matched.id;
+        if (realId && String(realId) !== String(id)) {
+          return this.getById(realId, token);
+        }
+        return matched;
+      }
+    }
+    throw new ApiError('The API returned an invalid city response.', 500);
   },
   async create(payload: CreateCityPayload, token?: string) {
     const response = await request<CityResponse>('/cities', {
@@ -511,6 +545,7 @@ export const categoriesApi = {
 
 function categoryFormData(payload: CreateCategoryPayload | UpdateCategoryPayload) {
   const body = new FormData();
+  if (payload.slug) body.append('slug', payload.slug);
   body.append('title', payload.title);
   body.append('description', payload.description);
   if (payload.hero_image) body.append('hero_image', payload.hero_image);
@@ -631,6 +666,14 @@ function unwrapThingsToDo(response: ThingsToDoResponse, action: string) {
 export const thingsToDoApi = {
   async list(token?: string) {
     const response = await request<ThingsToDoListResponse>('/things-to-do', { method: 'GET', headers: authorizationHeader(token) });
+    if (Array.isArray(response)) return response;
+    return response.data ?? response.things_to_do ?? response.thingsToDo ?? response.items ?? [];
+  },
+  async getByActivityId(activityId: string | number, token?: string) {
+    const response = await request<ThingsToDoListResponse>(`/things-to-do/activity/${encodeURIComponent(String(activityId))}`, {
+      method: 'GET',
+      headers: authorizationHeader(token),
+    });
     if (Array.isArray(response)) return response;
     return response.data ?? response.things_to_do ?? response.thingsToDo ?? response.items ?? [];
   },

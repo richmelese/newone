@@ -2,6 +2,52 @@ import type { DestinationGuide } from '@/types';
 import { unsplashPhoto, wikimediaPhoto } from '@/lib/images';
 
 export const destinationGuides: Record<string, DestinationGuide> = {
+  'abajifar': {
+    sections: [
+      {
+        title: { en: 'The Wooden Palace of Jiren', am: 'የጅሬን የእንጨት ቤተ መንግሥት' },
+        body: {
+          en: 'Built in the late 19th century on the hill of Jiren, Aba Jifar Palace stands as an architectural masterpiece constructed from indigenous timber, bamboo, and traditional materials. The expansive complex includes royal residential quarters, reception halls, mosques, and a traditional courtroom.',
+          am: 'በ19ኛው ክፍለ ዘመን መገባደጃ ላይ በጅሬን ኮረብታ ላይ የተገነባው የአባ ጅፋር ቤተ መንግሥት በዋነኝነት ከእንጨት፣ ከቀርከሃና ከባህላዊ ቁሳቁሶች የተሠራ የስነ ሕንፃ ድንቅ ነው። ውስብስቡ የንጉሣዊ መኖሪያ ክፍሎችን፣ የእንግዳ መቀበያ አዳራሾችን፣ መስጊዶችንና ባህላዊ የፍርድ ቤት አዳራሽን ያካትታል።',
+        },
+        photo: wikimediaPhoto('Aba Jifar Palace, Jimma, Ethiopia (17362840816).jpg', 1200),
+      },
+      {
+        title: { en: 'Coffee Heritage and Southwestern Culture', am: 'የቡና ቅርስና የደቡብ ምዕራብ ባህል' },
+        body: {
+          en: 'Jimma is the cultural hub of southwestern Ethiopia and the historic birthplace of Arabica coffee. Visitors can tour local coffee farms, historical archives, and bustling local markets brimming with fresh spices and honey.',
+          am: 'ጅማ የደቡብ ምዕራብ ኢትዮጵያ የባህል ማዕከል እንዲሁም የአረቢካ ቡና ታሪካዊ መገኛ ናት። ጎብኚዎች የአካባቢውን የቡና እርሻዎች፣ ታሪካዊ ማዕከላትና በቅመማ ቅመም የተሞሉ ገበያዎችን መጎብኘት ይችላሉ።',
+        },
+        photo: wikimediaPhoto('Aba Jifar Palace, Jimma, Ethiopia (17362840816).jpg', 900),
+      },
+    ],
+    gallery: [
+      wikimediaPhoto('Aba Jifar Palace, Jimma, Ethiopia (17362840816).jpg', 1200),
+    ],
+  },
+  'ertale': {
+    sections: [
+      {
+        title: { en: 'The Persistent Lava Lake', am: 'ቋሚው የላቫ ሐይቅ' },
+        body: {
+          en: 'Erta Ale is world-famous for containing one of the planet’s few continuous active lava lakes. Trekking to the crater rim at dusk allows visitors to watch radiant molten lava churn and bubble against the dark desert night.',
+          am: 'ኤርታሌ በዓለም ላይ ካሉ ጥቂት ቋሚ የቀለጠ ላቫ ሐይቆች አንዱ በመሆን በዓለም አቀፍ ደረጃ ታዋቂ ነው። በምሽት ወደ እሳተ ጎመራው ጫፍ መጓዝ በጨለማው የበረሃ ምሽት የሚፈላውን የቀለጠ አለት ለመመልከት ያስችላል።',
+        },
+        photo: wikimediaPhoto('Erta Ale.jpg', 1200),
+      },
+      {
+        title: { en: 'Danakil Depression Expedition', am: 'የዳናኪል ስምጥ ጉዞ' },
+        body: {
+          en: 'Journeying to Erta Ale leads travelers through the extraordinary Danakil Depression, featuring vast salt flats, mineral-rich hydrothermal springs, and traditional Afar salt caravans.',
+          am: 'ወደ ኤርታሌ የሚደረግ ጉዞ ተጓዦችን በሰፊ የጨው ሜዳዎች፣ በማዕድን የበለጸጉ የውሃ ምንጮችና በባህላዊ የአፋር የጨው ካራቫኖች ወደተሞላው አስደናቂው የዳናኪል ስምጥ ይመራል።',
+        },
+        photo: wikimediaPhoto('Erta Ale.jpg', 900),
+      },
+    ],
+    gallery: [
+      wikimediaPhoto('Erta Ale.jpg', 1200),
+    ],
+  },
   'addis-ababa': {
     sections: [
       {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
@@ -7,8 +7,13 @@ import { useLanguage } from '@/lib/language';
 import { destinations } from '@/data/destinations';
 import { pexelsPhoto } from '@/lib/images';
 import SearchBar from '@/components/search/SearchBar';
+import { citiesApi, resolveApiAssetUrl, type City } from '@/lib/api';
 
-const sideDestinations = destinations.slice(0, 4);
+function recordId(record?: { id?: string | number; _id?: string } | null) {
+  const id = record?.id ?? record?._id;
+  return id === undefined ? '' : String(id);
+}
+
 const HERO_SLIDES = [
   { photo: pexelsPhoto(7438884, 1920), heading: '#1e4066', body: '#132f43', muted: '#2a5580', overlay: 'linear-gradient(90deg, rgba(138,174,207,.94), rgba(61,111,154,.72) 48%, rgba(30,64,102,.42))' },
   { photo: pexelsPhoto(31502205, 1920), heading: '#eef3f9', body: '#ffffff', muted: '#d9e4f0', overlay: 'linear-gradient(90deg, rgba(11,26,46,.86), rgba(30,64,102,.64) 50%, rgba(11,26,46,.35))' },
@@ -17,9 +22,10 @@ const HERO_SLIDES = [
 const item = { hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0, transition: { duration: .55, ease: 'easeOut' as const } } };
 
 export default function Hero() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const reduceMotion = useReducedMotion();
   const [activePhoto, setActivePhoto] = useState(0);
+  const [apiCities, setApiCities] = useState<City[]>([]);
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end start'] });
   const imageY = useTransform(scrollYProgress, [0, 1], ['0%', '9%']);
@@ -28,6 +34,52 @@ export default function Hero() {
     { icon: ShieldCheck, title: t.heroTrustVerifiedTitle, desc: t.heroTrustVerifiedDesc },
     { icon: Headset, title: t.heroTrustSupportTitle, desc: t.heroTrustSupportDesc },
   ];
+
+  const TARGET_SLUGS = ['abajifar', 'axum', 'ertale', 'lalibela'];
+
+  useEffect(() => {
+    citiesApi
+      .list()
+      .then((cities) => {
+        if (Array.isArray(cities) && cities.length > 0) {
+          setApiCities(cities);
+        }
+      })
+      .catch(() => {
+        // fallback to static destinations
+      });
+  }, []);
+
+  const displayCities = useMemo(() => {
+    return TARGET_SLUGS.map((slug) => {
+      const local = destinations.find((d) => d.slug.toLowerCase() === slug || d.id.toLowerCase() === slug);
+      const apiMatch = apiCities.find(
+        (c) =>
+          (c.slug && c.slug.toLowerCase().includes(slug)) ||
+          (c.name_en && c.name_en.toLowerCase().includes(slug)),
+      );
+
+      const id = apiMatch
+        ? recordId(apiMatch) || apiMatch.slug || slug
+        : local?.slug || slug;
+
+      const name = apiMatch
+        ? language === 'am'
+          ? apiMatch.name_am || apiMatch.name_en
+          : apiMatch.name_en
+        : local?.name || slug.charAt(0).toUpperCase() + slug.slice(1);
+
+      const photo =
+        (apiMatch?.hero_image ? resolveApiAssetUrl(apiMatch.hero_image) : '') ||
+        local?.cardPhoto ||
+        local?.heroPhoto ||
+        'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=600&auto=format&fit=crop&q=80';
+
+      const href = `/cities/${encodeURIComponent(String(id))}`;
+
+      return { id, name, photo, href, sortKey: (local?.name || name).toLowerCase() };
+    }).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  }, [apiCities, language]);
 
   useEffect(() => {
     if (reduceMotion) return undefined;
@@ -81,9 +133,9 @@ export default function Hero() {
             dragElastic={.16}
             whileDrag={{ scale: 1.025 }}
           >
-            {sideDestinations.map((destination, index) => (
+            {displayCities.map((city, index) => (
               <motion.div
-                key={destination.slug}
+                key={city.id || city.name || index}
                 initial={reduceMotion ? false : { opacity: 0, y: 24, scale: .92 }}
                 animate={{ opacity: 1, y: [0, -30, 4, -13, 0], scale: [1, 1.055, .985, 1.025, 1] }}
                 transition={{
@@ -92,9 +144,21 @@ export default function Hero() {
                   y: { duration: 2.1, repeat: Infinity, repeatType: 'loop', repeatDelay: 0, ease: 'easeInOut', delay: .55 + index * .24 },
                 }}
               >
-                <Link href={`/destinations/${destination.slug}`} className="group block">
-                  <span className="relative block h-[104px] w-[104px] overflow-hidden rounded-full border-2 border-white shadow-[0_7px_0_#1e4066,0_15px_28px_rgba(11,26,46,0.48)] transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_10px_0_#1e4066,0_20px_36px_rgba(11,26,46,0.58)]"><Image src={destination.cardPhoto} alt="" fill unoptimized={destination.cardPhoto.includes('commons.wikimedia.org')} sizes="104px" className="object-cover" /></span>
-                  <motion.span animate={{ color: HERO_SLIDES[activePhoto].body }} transition={{ duration: .9 }} className="mt-2 flex items-center gap-1 text-xs font-semibold"><MapPin size={12} className="fill-accent-500 text-accent-500" />{destination.name}</motion.span>
+                <Link href={city.href} className="group block">
+                  <span className="relative block h-[104px] w-[104px] overflow-hidden rounded-full border-2 border-white shadow-[0_7px_0_#1e4066,0_15px_28px_rgba(11,26,46,0.48)] transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_10px_0_#1e4066,0_20px_36px_rgba(11,26,46,0.58)]">
+                    <img
+                      src={city.photo}
+                      alt={city.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = destinations[index % destinations.length]?.cardPhoto || 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=600&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                  </span>
+                  <motion.span animate={{ color: HERO_SLIDES[activePhoto].body }} transition={{ duration: .9 }} className="mt-2 flex items-center gap-1 text-xs font-semibold">
+                    <MapPin size={12} className="fill-accent-500 text-accent-500 shrink-0" />
+                    <span className="truncate max-w-[90px]">{city.name}</span>
+                  </motion.span>
                 </Link>
               </motion.div>
             ))}

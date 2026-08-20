@@ -97,7 +97,7 @@ export const translations = {
     experiencesViewAll: 'See all things to do',
     categoryThingsToDo: 'Things to do',
     reviewsStripTitle: 'What travelers are saying',
-    reviewsStripSubtitle: 'Real feedback from recent stays across Ethiopia.',
+    reviewsStripSubtitle: 'Real feedback from travelers who explore, plan, and book with Ethiopidia.',
 
     iconicPlacesEyebrow: 'Bucket list',
     iconicPlacesTitle: 'Iconic places you need to see in Ethiopia',
@@ -542,7 +542,7 @@ export const translations = {
     experiencesViewAll: 'ሁሉንም መዝናኛዎች ይመልከቱ',
     categoryThingsToDo: 'መዝናኛዎች',
     reviewsStripTitle: 'ተጓዦች የሚሉት',
-    reviewsStripSubtitle: 'ከቅርብ ጊዜ ቆይታዎች የተገኘ እውነተኛ አስተያየት።',
+    reviewsStripSubtitle: 'በኢትዮጵዲያ ጉዟቸውን ካቀዱና ካስያዙ ተጓዦች የተገኘ እውነተኛ አስተያየት።',
 
     iconicPlacesEyebrow: 'የጉዞ ዝርዝር',
     iconicPlacesTitle: 'በኢትዮጵያ ውስጥ ማየት የሚገባዎ ድንቅ ቦታዎች',

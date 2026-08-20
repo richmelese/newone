@@ -11,11 +11,13 @@ import { citiesApi, resolveApiAssetUrl, type City, type CreateCityPayload, type 
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { useLanguage } from '@/lib/language';
+import { slugify } from '@/lib/format';
 
 const PAGE_SIZE = 6;
 type CityForm = Omit<CreateCityPayload, 'hero_image'> & { hero_image: File | null };
 
 const EMPTY_FORM: CityForm = {
+  slug: '',
   name_en: '',
   name_am: '',
   description_en: '',
@@ -72,7 +74,7 @@ export default function AdminDestinationsPage() {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return items;
     return items.filter((city) =>
-      `${city.name_en} ${city.name_am} ${city.description_en} ${city.description_am}`
+      `${city.name_en} ${city.name_am} ${city.description_en} ${city.description_am} ${city.slug || ''} ${city.region || ''}`
         .toLowerCase()
         .includes(normalizedQuery),
     );
@@ -86,7 +88,13 @@ export default function AdminDestinationsPage() {
   }, [page, pageCount]);
 
   function updateField<K extends keyof CityForm>(field: K, value: CityForm[K]) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      if (field === 'name_en' && !editingCity) {
+        next.slug = slugify(String(value));
+      }
+      return next;
+    });
   }
 
   function openCreateModal() {
@@ -97,6 +105,7 @@ export default function AdminDestinationsPage() {
 
   function openEditModal(city: City) {
     setForm({
+      slug: city.slug || slugify(city.name_en || ''),
       name_en: city.name_en,
       name_am: city.name_am,
       description_en: city.description_en,
@@ -114,6 +123,7 @@ export default function AdminDestinationsPage() {
     setSubmitting(true);
     try {
       const textPayload = {
+        slug: (form.slug || slugify(form.name_en)).trim(),
         name_en: form.name_en.trim(),
         name_am: form.name_am.trim(),
         description_en: form.description_en.trim(),
@@ -214,6 +224,7 @@ export default function AdminDestinationsPage() {
                   </div>
                 </div>
                 <div className="p-4">
+                  {city.slug && <p className="mb-1 font-mono text-xs text-ink-400">/{city.slug}</p>}
                   <p lang={language} className="line-clamp-2 min-h-10 text-sm leading-relaxed text-ink-500">{localizedDescription}</p>
                   {cityId !== undefined && (
                     <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-4">
@@ -237,6 +248,16 @@ export default function AdminDestinationsPage() {
         <AdminEditModal title={editingCity ? 'Edit city or destination' : 'Create city or destination'} description="Add the English and Amharic content shown to travelers." onClose={() => { if (!submitting) { setShowCreate(false); setEditingCity(null); } }} onSubmit={saveCity} submitLabel={editingCity ? 'Save changes' : 'Create city'} submitting={submitting} submittingLabel={editingCity ? 'Saving…' : 'Creating…'}>
           <label className="text-sm font-bold text-ink-600">English name<input required value={form.name_en} onChange={(event) => updateField('name_en', event.target.value)} placeholder="Addis Ababa" className={adminFieldClass} /></label>
           <label className="text-sm font-bold text-ink-600">Amharic name<input required lang="am" value={form.name_am} onChange={(event) => updateField('name_am', event.target.value)} placeholder="አዲስ አበባ" className={adminFieldClass} /></label>
+          <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+            Slug
+            <input
+              required
+              value={form.slug || ''}
+              onChange={(event) => updateField('slug', event.target.value)}
+              placeholder="addis-ababa"
+              className={adminFieldClass}
+            />
+          </label>
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">English description<textarea required rows={3} value={form.description_en} onChange={(event) => updateField('description_en', event.target.value)} placeholder="Capital city of Ethiopia" className={adminTextAreaClass} /></label>
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">Amharic description<textarea required lang="am" rows={3} value={form.description_am} onChange={(event) => updateField('description_am', event.target.value)} placeholder="የኢትዮጵያ ዋና ከተማ" className={adminTextAreaClass} /></label>
           <label className="text-sm font-bold text-ink-600 sm:col-span-2">Region<input required value={form.region} onChange={(event) => updateField('region', event.target.value)} placeholder="Addis Ababa" className={adminFieldClass} /></label>

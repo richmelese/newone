@@ -46,7 +46,7 @@ export default function Navbar(_props: NavbarProps) {
   const navLinks = [
     { href: '/search', label: t.navHotels },
     { href: '/destinations', label: t.navDestinations },
-    { href: '/experiences', label: t.navExperiences },
+    { href: '/things-to-do', label: t.navExperiences },
     { href: '/blogs', label: 'Blog' },
   ];
 
@@ -86,7 +86,9 @@ export default function Navbar(_props: NavbarProps) {
 
           <nav aria-label="Main navigation" className="hidden items-center gap-7 lg:flex">
             {navLinks.map((link) => {
-              const active = router.pathname === link.href;
+              const active =
+                router.pathname === link.href ||
+                (link.href === '/things-to-do' && (router.pathname.startsWith('/things-to-do') || router.pathname.startsWith('/experiences') || router.pathname.startsWith('/activities')));
               return (
                 <motion.span
                   key={link.href}

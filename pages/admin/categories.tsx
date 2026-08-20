@@ -24,6 +24,10 @@ function categoryCityId(category: Category) {
   return typeof category.city === 'string' ? category.city : recordId(category.city);
 }
 
+function slugify(text: string) {
+  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export default function AdminCategoriesPage() {
   const { token } = useAuth();
   const { language } = useLanguage();
@@ -39,6 +43,7 @@ export default function AdminCategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
@@ -83,7 +88,7 @@ export default function AdminCategoriesPage() {
     const normalized = query.trim().toLowerCase();
     return categories.filter((category) => {
       const matchesCity = !filterCity || categoryCityId(category) === filterCity;
-      const matchesQuery = !normalized || `${category.title} ${category.description} ${cityNames.get(categoryCityId(category)) ?? ''}`.toLowerCase().includes(normalized);
+      const matchesQuery = !normalized || `${category.title} ${category.slug ?? ''} ${category.description} ${cityNames.get(categoryCityId(category)) ?? ''}`.toLowerCase().includes(normalized);
       return matchesCity && matchesQuery;
     });
   }, [categories, cityNames, filterCity, query]);
@@ -96,6 +101,7 @@ export default function AdminCategoriesPage() {
 
   function openCreate() {
     setEditing(null);
+    setSlug('');
     setTitle('');
     setDescription('');
     setCity(filterCity);
@@ -105,6 +111,7 @@ export default function AdminCategoriesPage() {
 
   function openEdit(category: Category) {
     setEditing(category);
+    setSlug(category.slug || slugify(category.title));
     setTitle(category.title);
     setDescription(category.description);
     setCity(categoryCityId(category));
@@ -119,9 +126,15 @@ export default function AdminCategoriesPage() {
       show('Please select a hero image.', 'error');
       return;
     }
+    const finalSlug = (slug.trim() || slugify(title)).trim();
+    if (!finalSlug) {
+      show('Please enter a valid slug.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const values = {
+        slug: finalSlug,
         title: title.trim(),
         description: description.trim(),
         city,
@@ -186,7 +199,13 @@ export default function AdminCategoriesPage() {
               const cityName = cityNames.get(categoryCityId(category)) || populatedCityName || 'Unknown city';
               return <article key={id || index} className="overflow-hidden rounded-card-lg border border-neutral-200 bg-white">
                 <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">{image ? <img src={image} alt={category.title} className="h-full w-full object-cover transition duration-500 hover:scale-105" /> : <div className="flex h-full items-center justify-center text-ink-300"><ImageIcon size={38} /></div>}{category.status && <div className="absolute left-3 top-3"><StatusPill tone="green">{category.status}</StatusPill></div>}</div>
-                <div className="p-4"><h2 className="font-heading font-extrabold text-primary-900">{category.title}</h2><p className="mt-1 text-xs font-semibold text-ink-400">{cityName}</p><p className="mt-2 line-clamp-2 text-sm text-ink-500">{category.description}</p>{id && <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-4"><button type="button" onClick={() => openEdit(category)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-800 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary-700"><Edit3 size={14} /> Edit</button><button type="button" onClick={() => void deleteCategory(category)} disabled={deletingId === id} className="flex items-center justify-center rounded-xl border border-danger-500/25 px-3 text-danger-500 transition hover:bg-danger-500 hover:text-white disabled:cursor-wait disabled:opacity-60" aria-label={`Delete ${category.title}`}>{deletingId === id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}</button></div>}</div>
+                <div className="p-4">
+                  <h2 className="font-heading font-extrabold text-primary-900">{category.title}</h2>
+                  {category.slug && <p className="font-mono text-[11px] text-primary-600">/{category.slug}</p>}
+                  <p className="mt-1 text-xs font-semibold text-ink-400">{cityName}</p>
+                  <p className="mt-2 line-clamp-2 text-sm text-ink-500">{category.description}</p>
+                  {id && <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-4"><button type="button" onClick={() => openEdit(category)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-800 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary-700"><Edit3 size={14} /> Edit</button><button type="button" onClick={() => void deleteCategory(category)} disabled={deletingId === id} className="flex items-center justify-center rounded-xl border border-danger-500/25 px-3 text-danger-500 transition hover:bg-danger-500 hover:text-white disabled:cursor-wait disabled:opacity-60" aria-label={`Delete ${category.title}`}>{deletingId === id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}</button></div>}
+                </div>
               </article>;
             })}
           </div>
@@ -195,7 +214,31 @@ export default function AdminCategoriesPage() {
       </Panel>
 
       {modalOpen && <AdminEditModal title={editing ? 'Edit category' : 'Create category'} description="Add a category and assign it to a destination city." onClose={() => { if (!saving) { setModalOpen(false); setEditing(null); } }} onSubmit={saveCategory} submitLabel={editing ? 'Save changes' : 'Create category'} submitting={saving} submittingLabel={editing ? 'Saving…' : 'Creating…'}>
-        <label className="text-sm font-bold text-ink-600 sm:col-span-2">Title<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Historic Places" className={adminFieldClass} /></label>
+        <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+          Title
+          <input
+            required
+            value={title}
+            onChange={(event) => {
+              const newTitle = event.target.value;
+              setTitle(newTitle);
+              if (!editing) setSlug(slugify(newTitle));
+            }}
+            placeholder="The Wooden Palace of Jiren"
+            className={adminFieldClass}
+          />
+        </label>
+        <label className="text-sm font-bold text-ink-600 sm:col-span-2">
+          Slug
+          <input
+            required
+            value={slug}
+            onChange={(event) => setSlug(event.target.value)}
+            placeholder="the-wooden-palace-of-jiren"
+            className={adminFieldClass}
+          />
+          <span className="mt-1 block text-xs font-normal text-ink-400">URL identifier (auto-generated from title, editable)</span>
+        </label>
         <label className="text-sm font-bold text-ink-600 sm:col-span-2">Description<textarea required rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Tourist spots in Addis Ababa." className={adminTextAreaClass} /></label>
         <label className="text-sm font-bold text-ink-600 sm:col-span-2">City<select required value={city} onChange={(event) => setCity(event.target.value)} className={adminFieldClass}><option value="">Select a city</option>{cities.map((item) => { const id = recordId(item); return id ? <option key={id} value={id}>{language === 'am' ? item.name_am : item.name_en}</option> : null; })}</select></label>
         <div className="sm:col-span-2"><label className="text-sm font-bold text-ink-600">Hero image{editing ? ' (leave empty to keep the current image)' : ''}<input required={!editing} type="file" accept="image/*" onChange={(event) => setHeroImage(event.target.files?.[0] ?? null)} className={`${adminFieldClass} py-2`} /></label>{heroPreview && <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100"><div className="flex items-center justify-between border-b border-neutral-200 bg-white px-3 py-2"><span className="text-xs font-bold text-ink-500">{heroImage ? 'New image preview' : 'Current hero image'}</span><span className="max-w-[60%] truncate text-xs text-ink-400">{heroImage?.name}</span></div><div className="aspect-[16/9]"><img src={heroPreview} alt="Category hero preview" className="h-full w-full object-cover" /></div></div>}</div>

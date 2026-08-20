@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
-import { Sparkles, Compass } from 'lucide-react';
-import { citiesApi, resolveApiAssetUrl, type City, type ThingsToDo } from '@/lib/api';
+import Link from 'next/link';
+import { Sparkles, Compass, Heart, ArrowRight } from 'lucide-react';
+import { citiesApi, resolveApiAssetUrl, type City, type ThingsToDo, type Activity } from '@/lib/api';
 import { destinations, getDestination } from '@/data/destinations';
 import { getDestinationGuide } from '@/data/destinationGuides';
 import { getHotelsByDestination } from '@/data/hotels';
@@ -24,10 +25,15 @@ function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function recordId(record?: { id?: string | number; _id?: string } | null) {
+  const id = record?.id ?? record?._id;
+  return id === undefined ? '' : String(id);
+}
+
 export default function DestinationDetailPage() {
   const router = useRouter();
-  const { slug } = router.query;
-  const targetIdOrSlug = typeof slug === 'string' ? slug : undefined;
+  const slugOrId = typeof router.query.id === 'string' ? router.query.id : typeof router.query.slug === 'string' ? router.query.slug : undefined;
+  const targetIdOrSlug = slugOrId;
 
   const { t, pick, language } = useLanguage();
   const [city, setCity] = useState<City | null>(null);
@@ -60,31 +66,6 @@ export default function DestinationDetailPage() {
       void loadCityData();
     }
   }, [router.isReady, loadCityData]);
-
-  if (!router.isReady || loading) {
-    return (
-      <Layout seo={{ title: 'Loading...', description: 'Loading city details' }}>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Spinner />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!city && !localDestination) {
-    return (
-      <Layout seo={{ title: 'Destination Not Found', description: 'The requested destination could not be found.' }}>
-        <PageShell className="py-12">
-          <ErrorState
-            title="Destination not found"
-            subtitle={error || "We couldn't find the city or destination you're looking for."}
-            retryLabel="Browse destinations"
-            onRetry={() => void router.push('/destinations')}
-          />
-        </PageShell>
-      </Layout>
-    );
-  }
 
   // Derive display values from API city or local destination fallback
   const cityName = city
@@ -125,6 +106,132 @@ export default function DestinationDetailPage() {
 
   const thingsToDo: ThingsToDo[] = city?.things_to_do && Array.isArray(city.things_to_do) ? city.things_to_do : [];
   const categorySections = (city?.categories ?? []).filter((category) => typeof category !== 'string');
+
+  const cityWords = cityName.trim().split(' ');
+  const cityFirstWord = cityWords[0] || cityName;
+  const cityRestWords = cityWords.slice(1).join(' ');
+
+  const groupedActivities = useMemo(() => {
+    if (thingsToDo.length > 0) {
+      const groupsMap = new Map<
+        string,
+        {
+          title: string;
+          activityId?: string;
+          items: Array<{
+            id: string;
+            title: string;
+            categoryName: string;
+            image: string;
+            href: string;
+          }>;
+        }
+      >();
+
+      thingsToDo.forEach((item, index) => {
+        const actObj = typeof item.activity === 'object' && item.activity ? (item.activity as Activity) : null;
+        const actName = actObj
+          ? (language === 'am' ? actObj.name_am || actObj.name_en : actObj.name_en)
+          : typeof item.activity === 'string'
+            ? item.activity
+            : language === 'am'
+              ? 'ተግባራት'
+              : 'Experiences';
+
+        const actId = actObj ? (recordId(actObj) || actObj.slug) : typeof item.activity === 'string' ? item.activity : '';
+        const key = actName || 'Other';
+
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, {
+            title: actName,
+            activityId: actId,
+            items: [],
+          });
+        }
+
+        const itemTitle = language === 'am' ? item.name_am || item.name_en : item.name_en;
+        const itemPhoto = resolveApiAssetUrl(item.hero_image);
+        const itemId = String(item._id ?? item.id ?? index);
+
+        groupsMap.get(key)!.items.push({
+          id: itemId,
+          title: itemTitle,
+          categoryName: actName,
+          image: itemPhoto,
+          href: actId
+            ? `/things-to-do/${encodeURIComponent(String(actId))}`
+            : `/things-to-do/item/${encodeURIComponent(itemId)}`,
+        });
+      });
+
+      return Array.from(groupsMap.values());
+    }
+
+    if (experiences.length > 0) {
+      const groupsMap = new Map<
+        string,
+        {
+          title: string;
+          activityId?: string;
+          items: Array<{
+            id: string;
+            title: string;
+            categoryName: string;
+            image: string;
+            href: string;
+          }>;
+        }
+      >();
+
+      experiences.forEach((exp) => {
+        const cat = exp.category || (language === 'am' ? 'ተግባራት' : 'Experiences');
+        if (!groupsMap.has(cat)) {
+          groupsMap.set(cat, {
+            title: cat,
+            items: [],
+          });
+        }
+
+        const title = pick(exp.name);
+        groupsMap.get(cat)!.items.push({
+          id: exp.id,
+          title,
+          categoryName: cat,
+          image: exp.photo,
+          href: `/experiences/${exp.id}`,
+        });
+      });
+
+      return Array.from(groupsMap.values());
+    }
+
+    return [];
+  }, [thingsToDo, experiences, language, pick]);
+
+  if (!router.isReady || loading) {
+    return (
+      <Layout seo={{ title: 'Loading...', description: 'Loading city details' }}>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Spinner />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!city && !localDestination) {
+    return (
+      <Layout seo={{ title: 'Destination Not Found', description: 'The requested destination could not be found.' }}>
+        <PageShell className="py-12">
+          <ErrorState
+            title="Destination not found"
+            subtitle={error || "We couldn't find the city or destination you're looking for."}
+            retryLabel="Browse destinations"
+            onRetry={() => void router.push('/destinations')}
+          />
+        </PageShell>
+      </Layout>
+    );
+  }
 
   return (
     <Layout
@@ -233,51 +340,72 @@ export default function DestinationDetailPage() {
           </section>
         )}
 
-        {/* Things To Do Section (from API /cities/{id}) */}
-        {thingsToDo.length > 0 && (
-          <Reveal className="mt-12">
-            <SectionHeader
-              title={`Things to Do in ${cityName}`}
-              subtitle={`${thingsToDo.length} activities & attractions`}
-              className="mb-6"
-            />
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {thingsToDo.map((item, index) => {
-                const itemTitle = language === 'am' ? item.name_am : item.name_en;
-                const itemDesc = language === 'am' ? item.description_am : item.description_en;
-                const itemPhoto = resolveApiAssetUrl(item.hero_image);
-                return (
-                  <div
-                    key={item._id ?? item.id ?? index}
-                    className="group overflow-hidden rounded-card-lg border border-neutral-200 bg-white shadow-card transition hover:-translate-y-1 hover:shadow-lift"
-                  >
-                    <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
-                      {itemPhoto ? (
-                        <Image
-                          src={itemPhoto}
-                          alt={itemTitle}
-                          fill
-                          unoptimized
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-ink-300">
-                          <Compass size={32} />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                        <h3 className="font-heading text-lg font-bold">{itemTitle}</h3>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <p className="line-clamp-3 text-sm text-ink-600">{itemDesc}</p>
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Things To Do Section Grouped by Activity */}
+        {groupedActivities.length > 0 && (
+          <Reveal className="mt-14 space-y-12">
+            <div>
+              <h2 className="font-heading text-3xl font-black tracking-tight text-ink-900 sm:text-4xl">
+                Things to Do in {cityFirstWord} {cityRestWords && <span className="text-[#f26a1b]">{cityRestWords}</span>}
+              </h2>
+              <p className="mt-1 text-sm font-medium text-ink-500">
+                {thingsToDo.length || experiences.length} activities & attractions
+              </p>
             </div>
+
+            {groupedActivities.map((group) => (
+              <div key={group.title} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Link
+                    href={group.activityId ? `/things-to-do/${encodeURIComponent(group.activityId)}` : '/things-to-do'}
+                    className="group inline-flex items-center gap-1.5 font-heading text-xl font-extrabold text-ink-900 transition hover:text-primary-700 sm:text-2xl"
+                  >
+                    <span>{group.title}</span>
+                    <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {group.items.map((card) => (
+                    <Link
+                      key={card.id}
+                      href={card.href}
+                      className="group block transition"
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[22px] bg-neutral-100 shadow-sm transition duration-300 hover:shadow-md">
+                        {card.image ? (
+                          <img
+                            src={card.image}
+                            alt={card.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-ink-300">
+                            <Compass size={32} />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-ink-700 shadow-sm backdrop-blur-sm transition hover:scale-110 hover:text-rose-600"
+                          aria-label="Save to favorites"
+                        >
+                          <Heart size={15} />
+                        </button>
+                      </div>
+                      <div className="pt-3">
+                        <h3 className="line-clamp-1 font-heading text-base font-extrabold text-ink-900 transition group-hover:text-primary-800">
+                          {card.title}
+                        </h3>
+                        <p className="mt-0.5 text-xs font-medium text-ink-400">{card.categoryName}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </Reveal>
         )}
 
